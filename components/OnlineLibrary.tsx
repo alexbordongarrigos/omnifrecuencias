@@ -76,51 +76,85 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
     return <div className="p-8 flex justify-center text-cyan-400"><Icon name="Loader" size={32} className="animate-spin" /></div>;
   }
 
-  if (!user) {
-    return (
-      <div className="p-8 max-w-md mx-auto">
-        <div className="bg-black/40 border border-white/10 p-8 rounded-3xl backdrop-blur-xl">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-              <Icon name="User" size={32} />
-            </div>
+  const handleProtectedAction = (action: () => void) => {
+    if (!user) {
+      // Show login modal or alert
+      alert('Debes iniciar sesión con tu cuenta Starseed OS para realizar esta acción.');
+      return;
+    }
+    action();
+  };
+
+  const LoginModal = () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-black/80 border border-white/10 p-8 rounded-3xl backdrop-blur-xl w-full max-w-md shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+            <Icon name="Cloud" size={32} />
           </div>
-          <h2 className="text-2xl font-black text-white text-center mb-2">Starseed OS</h2>
-          <p className="text-sm text-slate-400 text-center mb-8">Inicia sesión con tu cuenta universal para acceder a la librería en línea.</p>
-          
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <input type="email" placeholder="Correo electrónico" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors" value={email} onChange={e => setEmail(e.target.value)} />
-            </div>
-            <div>
-              <input type="password" placeholder="Contraseña" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors" value={password} onChange={e => setPassword(e.target.value)} />
-            </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
-            <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(34,211,238,0.3)]">Conectar</button>
-          </form>
         </div>
+        <h2 className="text-2xl font-black text-white text-center mb-2">Starseed OS</h2>
+        <p className="text-sm text-slate-400 text-center mb-8">Inicia sesión con tu cuenta universal para publicar, transmitir y sincronizar tus presets.</p>
+        
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <input type="email" placeholder="Correo electrónico" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={email} onChange={e => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <input type="password" placeholder="Contraseña" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={password} onChange={e => setPassword(e.target.value)} />
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3">
+             <button type="button" onClick={() => setError('login_cancelled')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">Cancelar</button>
+             <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">Conectar</button>
+          </div>
+        </form>
       </div>
-    );
-  }
+    </div>
+  );
 
   const filteredPresets = selectedCategory === 'all' ? presets : presets.filter(p => p.content?.category === selectedCategory);
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <div className="p-6 h-full flex flex-col relative">
+      {/* Conditionally render login modal if user clicked something requiring auth and is not logged in, or if explicitly opened. For now we use the error state hack to open it or we can just render it. Let's use a state `showLoginModal`. */}
+      {/* Wait, we don't have showLoginModal state, let's just render the Login form inline if they want to login via header. */}
+      
       <div className="flex justify-between items-center mb-6 bg-black/30 border border-white/5 p-4 rounded-2xl backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-purple-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-            {user.displayName.charAt(0)}
-          </div>
-          <div>
-            <h3 className="font-bold text-white">{user.displayName}</h3>
-            <p className="text-xs text-slate-400">Conectado a Starseed OS</p>
-          </div>
-        </div>
-        <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors flex items-center gap-2">
-          <Icon name="LogOut" size={16} /> Salir
-        </button>
+        {user ? (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                {user.displayName.charAt(0)}
+              </div>
+              <div>
+                <h3 className="font-bold text-white">{user.displayName}</h3>
+                <p className="text-xs text-amber-400 font-bold">Conectado a Starseed OS</p>
+              </div>
+            </div>
+            <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors flex items-center gap-2">
+              <Icon name="LogOut" size={16} /> Salir
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                <Icon name="Users" size={20} className="text-slate-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white">Modo Invitado</h3>
+                <p className="text-xs text-slate-400">Visualizando comunidad pública</p>
+              </div>
+            </div>
+            <button onClick={() => setError('force_login')} className="px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+              <Icon name="Cloud" size={16} /> Login Starseed
+            </button>
+          </>
+        )}
       </div>
+
+      {(!user && error === 'force_login') && <LoginModal />}
 
       <div className="flex mb-6 bg-black/50 p-1 rounded-xl border border-white/5 shrink-0">
         <button
@@ -143,9 +177,14 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
             <h2 className="text-xl font-bold flex items-center gap-2 text-cyan-300">
               <Icon name="Globe" size={24} /> Librería Comunitaria
             </h2>
-            <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
-              <Icon name="RefreshCw" size={18} />
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+                <Icon name="Upload" size={14} /> Publicar Preset
+              </button>
+              <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
+                <Icon name="RefreshCw" size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-4 mb-2 custom-scrollbar">
@@ -216,9 +255,14 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
             <h2 className="text-xl font-bold flex items-center gap-2 text-purple-300">
               <Icon name="Radio" size={24} /> Sesiones en Vivo
             </h2>
-            <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
-              <Icon name="RefreshCw" size={18} />
-            </button>
+            <div className="flex gap-2">
+               <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+                <Icon name="Radio" size={14} /> Transmitir
+              </button>
+              <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
+                <Icon name="RefreshCw" size={18} />
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

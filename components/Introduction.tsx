@@ -7,14 +7,21 @@ const Introduction: React.FC = () => {
       
       {/* Header */}
       <div className="text-center space-y-6">
-        <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-950/50 border border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.2)] mb-4">
-          <Icon name="Info" size={48} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+        <div className="flex justify-center items-center gap-6 mb-4">
+           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-950/50 border border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
+             <Icon name="Info" size={48} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+           </div>
+           <div className="w-8 h-px bg-gradient-to-r from-cyan-500/50 to-amber-500/50"></div>
+           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-950/50 border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)]" title="Starseed System">
+             <Icon name="Cloud" size={40} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+           </div>
         </div>
+        
         <h2 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 to-purple-400">
           Bienvenidos a OmniFrecuencias
         </h2>
         <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-          Un motor avanzado de resonancias, secuencias binaurales y cimática holográfica diseñado para sintonizar tu mente, cuerpo y entorno mediante geometrías cuánticas.
+          Un motor avanzado de resonancias, secuencias binaurales y cimática holográfica diseñado para sintonizar tu mente, cuerpo y entorno mediante geometrías cuánticas. Integra la consciencia global de <span className="text-amber-400 font-bold">Starseed OS</span>.
         </p>
       </div>
 
@@ -61,6 +68,49 @@ const Introduction: React.FC = () => {
           </p>
         </div>
 
+      </div>
+
+      {/* Downloads Section */}
+      <div className="mt-12 bg-black/60 border border-white/10 p-8 rounded-3xl backdrop-blur-xl flex flex-col items-center text-center">
+        <div className="w-16 h-16 bg-emerald-950/50 rounded-2xl flex items-center justify-center mb-6 border border-emerald-500/30">
+          <Icon name="Download" size={32} className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+        </div>
+        <h3 className="text-2xl font-black text-white mb-4">Descarga la App Nativa</h3>
+        <p className="text-slate-400 mb-8 max-w-xl mx-auto">
+          Para disfrutar del máximo rendimiento, aceleración de hardware para la geometría 3D y audio de baja latencia, descarga OmniFrecuencias en tu dispositivo.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-4">
+          {/* OS Auto-Detection logic is conceptual here via JS but we show all options */}
+          <button className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all" onClick={() => alert('Descarga para macOS iniciada (WIP)')}>
+            <Icon name="Apple" size={20} />
+            <div className="text-left">
+               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block font-bold text-sm text-white">macOS</span>
+            </div>
+          </button>
+          <button className="flex items-center gap-3 px-6 py-3 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 hover:border-blue-400 rounded-xl transition-all" onClick={() => alert('Descarga para Windows iniciada (WIP)')}>
+            <Icon name="Monitor" size={20} className="text-blue-400" />
+            <div className="text-left">
+               <span className="block text-[10px] text-blue-200/70 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block font-bold text-sm text-blue-100">Windows</span>
+            </div>
+          </button>
+          <button className="flex items-center gap-3 px-6 py-3 bg-green-950/40 hover:bg-green-900/60 border border-green-500/30 hover:border-green-400 rounded-xl transition-all" onClick={() => alert('Descarga para Android iniciada (WIP)')}>
+            <Icon name="Smartphone" size={20} className="text-green-400" />
+            <div className="text-left">
+               <span className="block text-[10px] text-green-200/70 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block font-bold text-sm text-green-100">Android</span>
+            </div>
+          </button>
+          <button className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all" onClick={() => alert('Descarga para iOS iniciada (WIP)')}>
+            <Icon name="Apple" size={20} />
+            <div className="text-left">
+               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block font-bold text-sm text-white">iOS</span>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Links Section */}

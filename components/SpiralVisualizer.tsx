@@ -29,6 +29,10 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
     depthSpeed: 1.0,
     baseFrequencyRef: 432,
     angleMultiplier: 1.0,
+    waveStyle: false,
+    waveAmplitude: 0.5,
+    infiniteDepth: false,
+    illumination: 1.0,
     autoPilot: false,
     sacredGeometryEnabled: false,
     sacredGeometryModes: [],
@@ -114,8 +118,13 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       const iter = config.iter;
       const minDim = Math.min(width, height);
       
-      // Depth emergence effect
-      const currentZoom = config.depthMode ? config.zoom * (1 + (time * config.depthSpeed) % 15) : config.zoom;
+      // Depth emergence effect and Infinite tunnel
+      let currentZoom = config.zoom;
+      if (config.infiniteDepth) {
+         currentZoom = config.zoom * Math.pow(1.5, (time * config.depthSpeed) % 10);
+      } else if (config.depthMode) {
+         currentZoom = config.zoom * (1 + (time * config.depthSpeed) % 15);
+      }
       const zoom = minDim * currentZoom;
 
       const drawSpiral = (freq: number, vol: number, baseColor: string, isUnified: boolean) => {
@@ -154,6 +163,19 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           let px = cx + zReal * zoom;
           let py = cy - zImag * zoom;
 
+          if (config.waveStyle) {
+             const wavePhase = n * 0.1 + time * (freq / 100);
+             // Perpendicular perturbation
+             const dx = zReal;
+             const dy = -zImag;
+             const mag = Math.sqrt(dx*dx + dy*dy) || 1;
+             const nx = dy / mag;
+             const ny = -dx / mag;
+             const waveOffset = Math.sin(wavePhase) * config.waveAmplitude * 20 * (vol + 0.2);
+             px += nx * waveOffset;
+             py += ny * waveOffset;
+          }
+
           if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px - cx) > width || Math.abs(py - cy) > height) {
             break;
           }
@@ -172,9 +194,9 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           ctx.shadowColor = baseColor;
         }
         
-        ctx.lineWidth = config.thickness + (vol * 3);
+        ctx.lineWidth = (config.thickness + (vol * 3)) * config.illumination;
         ctx.globalAlpha = config.opacity;
-        ctx.shadowBlur = 10 + vol * 20;
+        ctx.shadowBlur = (10 + vol * 30) * config.illumination;
         ctx.stroke();
       };
 
@@ -267,7 +289,7 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
              className="px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-slate-400 hover:text-white hover:border-white/30 transition-colors"
              title="Pantalla Completa"
            >
-             <Icon name="Maximize" size={16} />
+             <Icon name="Maximize2" size={16} />
            </button>
         </div>
       </div>
@@ -298,6 +320,26 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Factor K ({config.k.toFixed(3)})</span>
           <input type="range" min="0.5" max="1.5" step="0.001" value={config.k} disabled={config.autoPilot} onChange={(e) => setConfig(prev => ({ ...prev, k: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:rounded-full ${config.autoPilot ? 'opacity-50' : 'cursor-pointer'}`} />
         </div>
+        <div>
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1 text-emerald-400">Túnel Infinito</span>
+          <button onClick={() => setConfig(prev => ({ ...prev, infiniteDepth: !prev.infiniteDepth }))} className={`w-full py-1 rounded border text-[10px] uppercase font-bold transition-colors ${config.infiniteDepth ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+            {config.infiniteDepth ? 'Activo' : 'Inactivo'}
+          </button>
+        </div>
+        <div>
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1 text-pink-400">Trazo Ondular</span>
+          <button onClick={() => setConfig(prev => ({ ...prev, waveStyle: !prev.waveStyle }))} className={`w-full py-1 rounded border text-[10px] uppercase font-bold transition-colors ${config.waveStyle ? 'bg-pink-500/20 text-pink-300 border-pink-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+            {config.waveStyle ? 'Ondas' : 'Liso'}
+          </button>
+        </div>
+        <div>
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Amp. Onda ({config.waveAmplitude.toFixed(1)})</span>
+          <input type="range" min="0.1" max="2.0" step="0.1" value={config.waveAmplitude} disabled={!config.waveStyle} onChange={(e) => setConfig(prev => ({ ...prev, waveAmplitude: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-pink-400 [&::-webkit-slider-thumb]:rounded-full ${!config.waveStyle ? 'opacity-50' : 'cursor-pointer'}`} />
+        </div>
+        <div>
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Iluminación ({config.illumination.toFixed(1)}x)</span>
+          <input type="range" min="0.1" max="3.0" step="0.1" value={config.illumination} onChange={(e) => setConfig(prev => ({ ...prev, illumination: parseFloat(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-yellow-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
+        </div>
       </div>
       
       {/* Geometría Sagrada Controls */}
@@ -323,13 +365,18 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       </div>
 
       <div 
-        className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-black/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] flex-grow"
+        className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-black/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] flex-grow resize-y"
         style={{ minHeight: '300px', height: '100%' }}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
         
         <div className="absolute bottom-3 left-4 text-[9px] text-slate-500 font-mono tracking-widest uppercase pointer-events-none bg-black/60 px-3 py-1.5 rounded-lg border border-white/5">
           Ecuación: Z_n+1 = Z_n * (k * e^iψ) | ψ = Freq / {config.baseFrequencyRef} * {config.angleMultiplier.toFixed(1)}π
+        </div>
+        
+        {/* Resize handle icon */}
+        <div className="absolute bottom-0 right-0 p-2 text-white/20 pointer-events-none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 15 21 21 15 21"></polyline><polyline points="9 3 3 3 3 9"></polyline></svg>
         </div>
       </div>
     </div>

@@ -153,6 +153,13 @@ export interface SpiralConfig {
   baseFrequencyRef: number;
   angleMultiplier: number;
   
+  // Advanced Math Extensions
+  waveStyle: boolean;      // Enable sine wave literal drawing instead of smooth curves
+  waveAmplitude: number;   // Amplitude of the wave perturbation
+  infiniteDepth: boolean;  // Continuous zoom tunnel effect
+  illumination: number;    // Multiplier for brightness and glow reacting to sound
+  
+  
   autoPilot: boolean;
   sacredGeometryEnabled: boolean;
   sacredGeometryModes: SacredGeometryMode[];

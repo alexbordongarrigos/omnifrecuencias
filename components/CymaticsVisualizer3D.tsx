@@ -389,8 +389,8 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
 
       {/* 3D Canvas rendering surface */}
       <div 
-        className="relative w-full rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 bg-black/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)]"
-        style={{ height: `${height}px` }}
+        className="relative w-full rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing border border-white/10 bg-black/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] resize-y"
+        style={{ minHeight: '300px', height: `${height}px` }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -400,6 +400,11 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
 
         <div className="absolute bottom-3 left-4 text-[9px] text-slate-500 font-mono tracking-widest uppercase pointer-events-none bg-black/60 px-3 py-1.5 rounded-lg border border-white/5">
           Ecuación: Z = sin({config.n}πx)sin({config.m}πy) - sin({config.m}πx)sin({config.n}πy)
+        </div>
+        
+        {/* Resize handle icon (visual only, CSS resize handles the actual drag) */}
+        <div className="absolute bottom-0 right-0 p-2 text-white/20 pointer-events-none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 15 21 21 15 21"></polyline><polyline points="9 3 3 3 3 9"></polyline></svg>
         </div>
       </div>
     </div>
