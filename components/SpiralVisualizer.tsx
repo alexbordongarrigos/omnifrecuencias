@@ -1,16 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { SpiralConfig, CymaticsPalette, SacredGeometryMode } from '../types';
+import { SpiralConfig, CymaticsPalette, SacredGeometryMode, OscillatorState } from '../types';
 import Icon from './Icon';
 import * as GeometryDrawers from './geometryDrawers';
 
 interface Props {
   analyser: AnalyserNode | null;
-  activeFrequencies?: number[];
+  activeOscillators?: OscillatorState[];
   height?: number;
 }
 
-export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies = [432], height = 450 }) => {
+export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators = [], height = 450 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   
   const [config, setConfig] = useState<SpiralConfig>({
     k: 1.002,
@@ -24,11 +25,25 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
     opacity: 0.8,
     unifiedMode: true,
     colorPalette: 'holographic',
-    autoPilot: true,
+    depthMode: false,
+    depthSpeed: 1.0,
+    baseFrequencyRef: 432,
+    angleMultiplier: 1.0,
+    autoPilot: false,
     sacredGeometryEnabled: false,
     sacredGeometryModes: [],
     bgMode: 'solid'
   });
+
+  const handleFullscreen = () => {
+    if (containerRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        containerRef.current.requestFullscreen();
+      }
+    }
+  };
 
   const getPaletteColors = (palette: CymaticsPalette) => {
     switch (palette) {
@@ -73,7 +88,8 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
         audioAmp = (sum / 64 / 255);
       }
 
-      const primaryFreq = activeFrequencies[0] || 432;
+      const activeFreqs = activeOscillators.map(o => o.frequency);
+      const primaryFreq = activeFreqs[0] || config.baseFrequencyRef;
       smoothedVol += (audioAmp - smoothedVol) * 0.1;
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
@@ -95,61 +111,84 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
       }
 
       const colors = getPaletteColors(config.colorPalette);
-      
-      // AutoPilot
-      let k = config.k;
-      let psi = config.psi;
-      if (config.autoPilot) {
-        k = 1.002 + (Math.sin(time * 0.1) * 0.005) + (smoothedVol * 0.005);
-        psi = (smoothedFreq * 0.01) + (smoothedVol * 0.1) + time * 0.2;
-      }
-
       const iter = config.iter;
       const minDim = Math.min(width, height);
-      const zoom = minDim * config.zoom;
+      
+      // Depth emergence effect
+      const currentZoom = config.depthMode ? config.zoom * (1 + (time * config.depthSpeed) % 15) : config.zoom;
+      const zoom = minDim * currentZoom;
 
-      const rotReal = Math.cos(psi);
-      const rotImag = Math.sin(psi);
-
-      let zReal = config.z0_r !== 0 ? config.z0_r : 1.0 + (smoothedVol * 0.5);
-      let zImag = config.z0_i !== 0 ? config.z0_i : 0.0;
-
-      ctx.beginPath();
-      let prevX = cx + zReal * zoom;
-      let prevY = cy - zImag * zoom;
-      ctx.moveTo(prevX, prevY);
-
-      for (let n = 0; n < iter; n++) {
-        const zrK = zReal * k;
-        const ziK = zImag * k;
-
-        let nextReal = (zrK * rotReal - ziK * rotImag);
-        let nextImag = (zrK * rotImag + ziK * rotReal);
-
-        zReal = nextReal;
-        zImag = nextImag;
-
-        let px = cx + zReal * zoom;
-        let py = cy - zImag * zoom;
-
-        if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px - cx) > width || Math.abs(py - cy) > height) {
-          break;
+      const drawSpiral = (freq: number, vol: number, baseColor: string, isUnified: boolean) => {
+        let k = config.k;
+        let psi = config.psi;
+        
+        if (config.autoPilot) {
+          k = 1.002 + (Math.sin(time * 0.1) * 0.005) + (vol * 0.005);
+        } else {
+          // Direct relationship: freq -> psi
+          // E.g., if freq = baseFreq, psi = PI. Multiplied by user's angleMultiplier
+          psi = (freq / config.baseFrequencyRef) * Math.PI * config.angleMultiplier;
         }
 
-        ctx.lineTo(px, py);
-      }
+        const rotReal = Math.cos(psi);
+        const rotImag = Math.sin(psi);
 
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, colors[0]);
-      gradient.addColorStop(1, colors[1]);
-      
-      ctx.strokeStyle = gradient;
-      ctx.lineWidth = config.thickness + (smoothedVol * 3);
-      ctx.globalAlpha = config.opacity;
-      
-      ctx.shadowBlur = 10 + smoothedVol * 20;
-      ctx.shadowColor = colors[0];
-      ctx.stroke();
+        let zReal = config.z0_r !== 0 ? config.z0_r : 1.0 + (vol * 0.5);
+        let zImag = config.z0_i !== 0 ? config.z0_i : 0.0;
+
+        ctx.beginPath();
+        let prevX = cx + zReal * zoom;
+        let prevY = cy - zImag * zoom;
+        ctx.moveTo(prevX, prevY);
+
+        for (let n = 0; n < iter; n++) {
+          const zrK = zReal * k;
+          const ziK = zImag * k;
+
+          let nextReal = (zrK * rotReal - ziK * rotImag);
+          let nextImag = (zrK * rotImag + ziK * rotReal);
+
+          zReal = nextReal;
+          zImag = nextImag;
+
+          let px = cx + zReal * zoom;
+          let py = cy - zImag * zoom;
+
+          if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px - cx) > width || Math.abs(py - cy) > height) {
+            break;
+          }
+
+          ctx.lineTo(px, py);
+        }
+
+        if (isUnified) {
+          const gradient = ctx.createLinearGradient(0, 0, width, height);
+          gradient.addColorStop(0, colors[0]);
+          gradient.addColorStop(1, colors[1]);
+          ctx.strokeStyle = gradient;
+          ctx.shadowColor = colors[0];
+        } else {
+          ctx.strokeStyle = baseColor;
+          ctx.shadowColor = baseColor;
+        }
+        
+        ctx.lineWidth = config.thickness + (vol * 3);
+        ctx.globalAlpha = config.opacity;
+        ctx.shadowBlur = 10 + vol * 20;
+        ctx.stroke();
+      };
+
+      if (config.unifiedMode || activeOscillators.length === 0) {
+        // Average frequency
+        const avgFreq = activeFreqs.length > 0 ? activeFreqs.reduce((a, b) => a + b, 0) / activeFreqs.length : config.baseFrequencyRef;
+        drawSpiral(avgFreq, smoothedVol, colors[0], true);
+      } else {
+        // Individual lines per oscillator
+        activeOscillators.forEach((osc, idx) => {
+           // We can give a bit of phase offset or just use their raw frequency
+           drawSpiral(osc.frequency, smoothedVol * osc.volume, osc.color || colors[idx % 2], false);
+        });
+      }
 
       // Sacred Geometries
       if (config.sacredGeometryEnabled && config.sacredGeometryModes.length > 0) {
@@ -170,10 +209,10 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
 
     render();
     return () => cancelAnimationFrame(animFrameId);
-  }, [analyser, activeFrequencies, config]);
+  }, [analyser, activeOscillators, config]);
 
   return (
-    <div className="relative rounded-3xl border border-cyan-500/30 bg-black/80 backdrop-blur-2xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(34,211,238,0.05)] overflow-hidden flex flex-col h-full">
+    <div ref={containerRef} className="relative rounded-3xl border border-cyan-500/30 bg-black/80 backdrop-blur-2xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(34,211,238,0.05)] overflow-hidden flex flex-col h-full group">
       <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none"></div>
       
       {/* Header and Basic Controls */}
@@ -192,7 +231,20 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+           <button 
+             onClick={() => setConfig(prev => ({ ...prev, depthMode: !prev.depthMode }))}
+             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${config.depthMode ? 'bg-amber-500/30 text-amber-200 border border-amber-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
+           >
+             Profundidad 3D {config.depthMode ? 'ON' : 'OFF'}
+           </button>
+           <button 
+             onClick={() => setConfig(prev => ({ ...prev, unifiedMode: !prev.unifiedMode }))}
+             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${!config.unifiedMode ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
+             title="Mostrar líneas separadas por frecuencia vs una línea promedio"
+           >
+             {config.unifiedMode ? 'Línea Mezclada' : 'Líneas Separadas'}
+           </button>
            <button 
              onClick={() => setConfig(prev => ({ ...prev, autoPilot: !prev.autoPilot }))}
              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${config.autoPilot ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
@@ -210,30 +262,41 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
              <option value="aurora">Aurora Green</option>
              <option value="gold">Gold Alquimia</option>
            </select>
+           <button 
+             onClick={handleFullscreen}
+             className="px-3 py-1.5 rounded-lg bg-black/60 border border-white/10 text-slate-400 hover:text-white hover:border-white/30 transition-colors"
+             title="Pantalla Completa"
+           >
+             <Icon name="Maximize" size={16} />
+           </button>
         </div>
       </div>
 
       {/* Advanced Controls */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4 relative z-10 bg-black/40 p-3 rounded-2xl border border-white/5 text-[9px] shrink-0">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-4 relative z-10 bg-black/40 p-3 rounded-2xl border border-white/5 text-[9px] shrink-0">
         <div>
           <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Iteraciones ({config.iter})</span>
           <input type="range" min="100" max="10000" step="100" value={config.iter} onChange={(e) => setConfig(prev => ({ ...prev, iter: parseInt(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
         </div>
         <div>
-          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Factor K ({config.k.toFixed(3)})</span>
-          <input type="range" min="0.5" max="1.5" step="0.001" value={config.k} disabled={config.autoPilot} onChange={(e) => setConfig(prev => ({ ...prev, k: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:rounded-full ${config.autoPilot ? 'opacity-50' : 'cursor-pointer'}`} />
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Ángulo Ψ ({config.autoPilot ? 'Auto' : config.angleMultiplier.toFixed(2) + 'x Freq'})</span>
+          <input type="range" min="0.1" max="10.0" step="0.1" value={config.angleMultiplier} disabled={config.autoPilot} onChange={(e) => setConfig(prev => ({ ...prev, angleMultiplier: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-pink-400 [&::-webkit-slider-thumb]:rounded-full ${config.autoPilot ? 'opacity-50' : 'cursor-pointer'}`} />
         </div>
         <div>
-          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Ángulo Psi ({config.psi.toFixed(2)})</span>
-          <input type="range" min="0" max={Math.PI * 2} step="0.01" value={config.psi} disabled={config.autoPilot} onChange={(e) => setConfig(prev => ({ ...prev, psi: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-pink-400 [&::-webkit-slider-thumb]:rounded-full ${config.autoPilot ? 'opacity-50' : 'cursor-pointer'}`} />
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Velocidad 3D ({config.depthSpeed.toFixed(1)}x)</span>
+          <input type="range" min="0.1" max="5.0" step="0.1" value={config.depthSpeed} disabled={!config.depthMode} onChange={(e) => setConfig(prev => ({ ...prev, depthSpeed: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:rounded-full ${!config.depthMode ? 'opacity-50' : 'cursor-pointer'}`} />
+        </div>
+        <div>
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Base Hz ({config.baseFrequencyRef})</span>
+          <input type="range" min="10" max="1000" step="10" value={config.baseFrequencyRef} onChange={(e) => setConfig(prev => ({ ...prev, baseFrequencyRef: parseInt(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-indigo-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
         </div>
         <div>
           <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Zoom ({(config.zoom * 100).toFixed(0)}%)</span>
-          <input type="range" min="0.001" max="0.5" step="0.001" value={config.zoom} onChange={(e) => setConfig(prev => ({ ...prev, zoom: parseFloat(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-amber-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
+          <input type="range" min="0.001" max="0.5" step="0.001" value={config.zoom} onChange={(e) => setConfig(prev => ({ ...prev, zoom: parseFloat(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
         </div>
         <div>
-          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Velocidad ({config.speedMultiplier.toFixed(1)}x)</span>
-          <input type="range" min="0.1" max="3.0" step="0.1" value={config.speedMultiplier} onChange={(e) => setConfig(prev => ({ ...prev, speedMultiplier: parseFloat(e.target.value) }))} className="w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-emerald-400 [&::-webkit-slider-thumb]:rounded-full cursor-pointer" />
+          <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1">Factor K ({config.k.toFixed(3)})</span>
+          <input type="range" min="0.5" max="1.5" step="0.001" value={config.k} disabled={config.autoPilot} onChange={(e) => setConfig(prev => ({ ...prev, k: parseFloat(e.target.value) }))} className={`w-full h-1 bg-slate-800 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:bg-purple-400 [&::-webkit-slider-thumb]:rounded-full ${config.autoPilot ? 'opacity-50' : 'cursor-pointer'}`} />
         </div>
       </div>
       
@@ -266,7 +329,7 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeFrequencies 
         <canvas ref={canvasRef} className="w-full h-full block" />
         
         <div className="absolute bottom-3 left-4 text-[9px] text-slate-500 font-mono tracking-widest uppercase pointer-events-none bg-black/60 px-3 py-1.5 rounded-lg border border-white/5">
-          Ecuación Compleja: Z_n+1 = Z_n * (k * e^iψ) | k={config.k.toFixed(3)} ψ={config.psi.toFixed(2)}
+          Ecuación: Z_n+1 = Z_n * (k * e^iψ) | ψ = Freq / {config.baseFrequencyRef} * {config.angleMultiplier.toFixed(1)}π
         </div>
       </div>
     </div>

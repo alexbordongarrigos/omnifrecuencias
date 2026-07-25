@@ -444,7 +444,7 @@ const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
         ) : (
           <SpiralVisualizer
             analyser={getCombinedAnalyser()}
-            activeFrequencies={activeFreqsList}
+            activeOscillators={oscillators.filter(o => o.isPlaying)}
             height={380}
           />
         )}

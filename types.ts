@@ -147,6 +147,12 @@ export interface SpiralConfig {
   unifiedMode: boolean; // Draw one combined spiral vs one per frequency
   colorPalette: CymaticsPalette;
   
+  // New Math / Depth options
+  depthMode: boolean;
+  depthSpeed: number;
+  baseFrequencyRef: number;
+  angleMultiplier: number;
+  
   autoPilot: boolean;
   sacredGeometryEnabled: boolean;
   sacredGeometryModes: SacredGeometryMode[];
