@@ -19,22 +19,22 @@ const DEFAULT_CONFIG: SpiralConfig = {
   psi: 2.399,
   z0_r: 0,
   z0_i: 0,
-  iter: 1000,
-  zoom: 0.05,
+  iter: 10000,
+  zoom: 0.001,
   speedMultiplier: 1.0,
   thickness: 2.0,
   opacity: 0.8,
   unifiedMode: true,
   colorPalette: 'holographic',
-  depthMode: true,
+  depthMode: false,
   depthSpeed: 1.0,
-  baseFrequencyRef: 432, // Maintained for type compatibility but no longer in UI
+  baseFrequencyRef: 432,
   angleMultiplier: 1.0,
   waveStyle: false,
   waveAmplitude: 0.5,
   infiniteDepth: true,
   illumination: 0.0,
-  autoPilot: false,
+  autoPilot: true,
   sacredGeometryEnabled: false,
   sacredGeometryModes: [],
   bgMode: 'solid'
@@ -155,8 +155,8 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       smoothedVol += (audioAmp - smoothedVol) * 0.1;
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
-      // Solo avanza el tiempo (rotación/movimiento) si hay al menos un oscilador reproduciéndose
-      if (playingOscillators.length > 0) {
+      // Solo avanza el tiempo (rotación/movimiento) si hay frecuencias reproduciéndose y hay volumen real
+      if (playingOscillators.length > 0 && smoothedVol > 0.001) {
         time += 0.02 * currentConfig.speedMultiplier;
       }
 
@@ -413,12 +413,6 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
              Restablecer
            </button>
            <button 
-             onClick={() => setConfig(prev => ({ ...prev, depthMode: !prev.depthMode }))}
-             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${config.depthMode ? 'bg-amber-500/30 text-amber-200 border border-amber-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
-           >
-             Profundidad 3D {config.depthMode ? 'ON' : 'OFF'}
-           </button>
-           <button 
              onClick={() => setConfig(prev => ({ ...prev, autoPilot: !prev.autoPilot }))}
              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${config.autoPilot ? 'bg-purple-500/30 text-purple-200 border border-purple-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
            >
@@ -526,47 +520,92 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       
       {isFullscreen && (
         <div 
-           className="absolute inset-0 z-50 flex flex-col pointer-events-none"
+           className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
            onMouseMove={resetHideControlsTimeout}
            onClick={() => !showFullscreenControls && resetHideControlsTimeout()}
         >
             <div className={`absolute inset-0 transition-opacity duration-500 ${showFullscreenControls ? 'opacity-100' : 'opacity-0'}`}>
-              <div className="absolute top-4 right-4 pointer-events-auto">
+              <div className="absolute top-6 right-6 pointer-events-auto">
                   <button 
                     onClick={() => {
                         setShowFullscreenControls(false);
                     }}
-                    className="bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 hover:border-cyan-500/50 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                    className="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 hover:border-cyan-500/50 transition-all shadow-xl"
                   >
                       <Icon name="EyeOff" size={14} />
-                      Ocultar Controles
+                      Ocultar Menú
                   </button>
               </div>
             
               {showFullscreenControls && (
-                  <div className="absolute bottom-4 left-4 right-4 pointer-events-auto max-h-[40vh] overflow-y-auto custom-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)]" onMouseMove={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-                              <Icon name="Sliders" size={14} />
-                              Frecuencias Activas
+                  <div className="pointer-events-auto w-full max-w-5xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-black/80 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.9)] mx-4 my-auto flex flex-col gap-6" onMouseMove={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                          <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-sm flex items-center gap-3">
+                              <Icon name="Settings" size={18} />
+                              Ajustes de Espiral y Frecuencias
                           </h3>
                           <button 
                               onClick={handleFullscreen}
-                              className="text-slate-400 hover:text-white px-3 py-1 bg-white/5 hover:bg-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
+                              className="text-slate-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-red-500/20 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
                           >
                               Salir de Pantalla Completa
                           </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {allOscillators.map(osc => (
-                              <OscillatorControls 
-                                  key={osc.id} 
-                                  osc={osc} 
-                                  update={onUpdateOscillator || (() => {})} 
-                                  remove={onRemoveOscillator || (() => {})}
-                                  analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
-                              />
-                          ))}
+
+                      {/* Spiral Advanced Configs duplicated for Fullscreen */}
+                      <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+                        <h4 className="text-purple-400 font-bold uppercase tracking-wider text-[10px] mb-4">Configuración del Espiral</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                          {renderNumberInput("Iteraciones", config.iter, 'iter', 100, 10000, 100)}
+                          {renderNumberInput("Zoom Inicial", config.zoom, 'zoom', 0.001, 0.5, 0.001)}
+                          {renderNumberInput("Vel. Profund.", config.depthSpeed, 'depthSpeed', 0.1, 5.0, 0.1, !config.depthMode)}
+                          {renderNumberInput("Mult. Ángulo", config.angleMultiplier, 'angleMultiplier', 0.1, 10.0, 0.1, config.autoPilot)}
+                          {renderNumberInput("Factor K", config.k, 'k', 0.5, 1.5, 0.001, config.autoPilot)}
+                          
+                          <div>
+                            <span className="text-slate-400 uppercase font-bold tracking-wider block mb-2 text-[10px] text-emerald-400">Túnel Infinito</span>
+                            <button 
+                              onClick={() => {
+                                setConfig(prev => {
+                                  const nextVal = !prev.infiniteDepth;
+                                  return { 
+                                    ...prev, 
+                                    infiniteDepth: nextVal,
+                                    iter: nextVal ? 10000 : 1000,
+                                    zoom: nextVal ? 0.001 : 0.05
+                                  };
+                                });
+                              }} 
+                              className={`w-full py-2 rounded-lg border text-[10px] uppercase font-bold transition-colors ${config.infiniteDepth ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+                              {config.infiniteDepth ? 'Activo' : 'Inactivo'}
+                            </button>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 uppercase font-bold tracking-wider block mb-2 text-[10px] text-pink-400">Trazo Ondular</span>
+                            <button onClick={() => setConfig(prev => ({ ...prev, waveStyle: !prev.waveStyle }))} className={`w-full py-2 rounded-lg border text-[10px] uppercase font-bold transition-colors ${config.waveStyle ? 'bg-pink-500/20 text-pink-300 border-pink-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+                              {config.waveStyle ? 'Ondas' : 'Liso'}
+                            </button>
+                          </div>
+                          {renderNumberInput("Amp. Onda", config.waveAmplitude, 'waveAmplitude', 0.1, 2.0, 0.1, !config.waveStyle)}
+                          {renderNumberInput("Iluminación", config.illumination, 'illumination', 0, 3.0, 0.1)}
+                          {renderNumberInput("Grosor Línea", config.thickness, 'thickness', 0.5, 10.0, 0.5)}
+                        </div>
+                      </div>
+
+                      {/* Oscillator Controls */}
+                      <div>
+                        <h4 className="text-cyan-400 font-bold uppercase tracking-wider text-[10px] mb-4">Generadores Activos</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {allOscillators.map(osc => (
+                                <OscillatorControls 
+                                    key={osc.id} 
+                                    osc={osc} 
+                                    update={onUpdateOscillator || (() => {})} 
+                                    remove={onRemoveOscillator || (() => {})}
+                                    analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
+                                />
+                            ))}
+                        </div>
                       </div>
                   </div>
               )}

@@ -19,14 +19,33 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showFullscreenControls, setShowFullscreenControls] = useState(true);
+  const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetHideControlsTimeout = () => {
+    setShowFullscreenControls(true);
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowFullscreenControls(false);
+    }, 3000);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
       if (!document.fullscreenElement) setShowControls(true);
+      if (!!document.fullscreenElement) {
+        resetHideControlsTimeout();
+      } else {
+        if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+      }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+    };
   }, []);
 
   const toggleFullscreen = async () => {
@@ -514,49 +533,83 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
         </div>
       </div>
       
-      {/* Fullscreen Overlay Controls */}
       {isFullscreen && (
         <div 
-           className={`absolute inset-0 z-50 flex flex-col pointer-events-none ${showFullscreenControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-           onMouseMove={() => !showFullscreenControls && setShowFullscreenControls(true)}
+           className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+           onMouseMove={resetHideControlsTimeout}
+           onClick={() => !showFullscreenControls && resetHideControlsTimeout()}
         >
-            <div className="absolute top-4 right-4 pointer-events-auto">
-                <button 
-                  onClick={() => setShowFullscreenControls(!showFullscreenControls)}
-                  className="bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 hover:border-cyan-500/50 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                >
-                    <Icon name={showFullscreenControls ? "EyeOff" : "Eye"} size={14} />
-                    {showFullscreenControls ? 'Ocultar Controles' : 'Mostrar Controles'}
-                </button>
-            </div>
+            <div className={`absolute inset-0 transition-opacity duration-500 ${showFullscreenControls ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="absolute top-6 right-6 pointer-events-auto">
+                  <button 
+                    onClick={() => {
+                        setShowFullscreenControls(false);
+                    }}
+                    className="bg-black/40 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-white/10 hover:border-cyan-500/50 transition-all shadow-xl"
+                  >
+                      <Icon name="EyeOff" size={14} />
+                      Ocultar Menú
+                  </button>
+              </div>
             
-            {showFullscreenControls && (
-                <div className="absolute bottom-4 left-4 right-4 pointer-events-auto max-h-[40vh] overflow-y-auto custom-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-                            <Icon name="Sliders" size={14} />
-                            Frecuencias Activas
-                        </h3>
-                        <button 
-                            onClick={toggleFullscreen}
-                            className="text-slate-400 hover:text-white px-3 py-1 bg-white/5 hover:bg-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
-                        >
-                            Salir de Pantalla Completa
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {allOscillators.map(osc => (
-                            <OscillatorControls 
-                                key={osc.id} 
-                                osc={osc} 
-                                update={onUpdateOscillator || (() => {})} 
-                                remove={onRemoveOscillator || (() => {})}
-                                analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
+              {showFullscreenControls && (
+                  <div className="pointer-events-auto w-full max-w-5xl max-h-[85vh] overflow-y-auto custom-scrollbar bg-black/80 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-[0_0_80px_rgba(0,0,0,0.9)] mx-4 my-auto flex flex-col gap-6" onMouseMove={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                          <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-sm flex items-center gap-3">
+                              <Icon name="Settings" size={18} />
+                              Ajustes de Cimática y Frecuencias
+                          </h3>
+                          <button 
+                              onClick={toggleFullscreen}
+                              className="text-slate-400 hover:text-white px-4 py-2 bg-white/5 hover:bg-red-500/20 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
+                          >
+                              Salir de Pantalla Completa
+                          </button>
+                      </div>
+
+                      {/* Cymatics Configs duplicated for Fullscreen */}
+                      <div className="bg-black/40 p-5 rounded-2xl border border-white/5">
+                        <h4 className="text-purple-400 font-bold uppercase tracking-wider text-[10px] mb-4">Configuración Cimática</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                          {renderNumberInput("Partículas", config.particleCount, 'particleCount', 100, 5000, 100)}
+                          {renderNumberInput("Sensibilidad", config.sensitivity, 'sensitivity', 0.1, 5.0, 0.1)}
+                          {renderNumberInput("Resolución", config.plateMeshResolution, 'plateMeshResolution', 10, 100, 5)}
+                          {renderNumberInput("Gravedad", config.gravity, 'gravity', 0, 0.5, 0.01)}
+                          {renderNumberInput("Tamaño Partícula", config.particleSize, 'particleSize', 0.5, 10.0, 0.5)}
+                          
+                          <div>
+                            <span className="text-slate-400 uppercase font-bold tracking-wider block mb-2 text-[10px]">Rotación Automática</span>
+                            <button onClick={() => setConfig(prev => ({ ...prev, autoRotate: !prev.autoRotate }))} className={`w-full py-2 rounded-lg border text-[10px] uppercase font-bold transition-colors ${config.autoRotate ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+                              {config.autoRotate ? 'Activo' : 'Inactivo'}
+                            </button>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 uppercase font-bold tracking-wider block mb-2 text-[10px]">Visibilidad</span>
+                            <button onClick={() => setConfig(prev => ({ ...prev, showParticles: !prev.showParticles }))} className={`w-full py-2 rounded-lg border text-[10px] uppercase font-bold transition-colors ${config.showParticles ? 'bg-purple-500/20 text-purple-300 border-purple-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+                              {config.showParticles ? 'Ocultar' : 'Mostrar'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Oscillator Controls */}
+                      <div>
+                        <h4 className="text-cyan-400 font-bold uppercase tracking-wider text-[10px] mb-4">Generadores Activos</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {allOscillators.map(osc => (
+                                <OscillatorControls 
+                                    key={osc.id} 
+                                    osc={osc} 
+                                    update={onUpdateOscillator || (() => {})} 
+                                    remove={onRemoveOscillator || (() => {})}
+                                    analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
+                                />
+                            ))}
+                        </div>
+                      </div>
+                  </div>
+              )}
+            </div>
         </div>
       )}
     </div>
