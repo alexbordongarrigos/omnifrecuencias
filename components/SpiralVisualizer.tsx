@@ -141,7 +141,13 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       const cy = height / 2;
 
       let audioAmp = 0;
-      if (currentAnalyser) {
+      let hasPlaying = false;
+      
+      for (const o of currentOscillators) {
+        if (o.isPlaying) hasPlaying = true;
+      }
+
+      if (currentAnalyser && hasPlaying) {
         currentAnalyser.getByteFrequencyData(fftData);
         let sum = 0;
         for (let i = 0; i < 64; i++) sum += fftData[i];
@@ -152,11 +158,15 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       const activeFreqs = currentOscillators.map(o => o.frequency); // Use ALL current oscillators for geometry
       const primaryFreq = activeFreqs.length > 0 ? activeFreqs[0] : 432;
       
-      smoothedVol += (audioAmp - smoothedVol) * 0.1;
+      if (!hasPlaying) {
+        smoothedVol = 0;
+      } else {
+        smoothedVol += (audioAmp - smoothedVol) * 0.1;
+      }
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
       // Solo avanza el tiempo (rotación/movimiento) si hay frecuencias reproduciéndose y hay volumen real
-      if (playingOscillators.length > 0 && smoothedVol > 0.001) {
+      if (hasPlaying && smoothedVol > 0.001) {
         time += 0.02 * currentConfig.speedMultiplier;
       }
 
@@ -180,22 +190,17 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       const baseZoom = currentConfig.zoom;
       const minDim = Math.min(width, height);
       
-      // Calculate N and M based on Cymatics Formula to link geometry
-      const calcN = (f: number) => 3 + Math.floor((f % 100) / 25);
-      const calcM = (f: number) => 5 + Math.floor((f % 50) / 10);
-
+      // Relación Matemática: El ángulo fractal (psi) es exactamente la frecuencia en grados,
+      // creando patrones cimáticos cerrados y perfectos para frecuencias armónicas o enteras.
       const drawSpiral = (osc: OscillatorState | null, freq: number, vol: number, baseColor: string, isUnified: boolean) => {
         let k = currentConfig.k * (osc && osc.crestValleyRatio ? osc.crestValleyRatio : 1.0);
         
-        if (currentConfig.autoPilot) {
+        if (currentConfig.autoPilot && hasPlaying) {
           k = 1.002 + (Math.sin(time * 0.1) * 0.005) + (vol * 0.005);
         }
         
-        // Relación Fractal Matemática con Cimática: N / M
-        const N = calcN(freq);
-        const M = calcM(freq);
         let angleMult = currentConfig.angleMultiplier * (osc && osc.dutyCycle ? 1.0 + osc.dutyCycle : 1.0);
-        const psi = 2 * Math.PI * (N / M) * angleMult;
+        const psi = (freq * Math.PI / 180) * angleMult;
 
         const rotReal = Math.cos(psi);
         const rotImag = Math.sin(psi);
@@ -385,11 +390,16 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
   };
 
   return (
-    <div ref={containerRef} className="relative rounded-3xl border border-cyan-500/30 bg-black/80 backdrop-blur-2xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(34,211,238,0.05)] overflow-hidden flex flex-col h-full group">
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none"></div>
+    <div ref={containerRef} className={`relative flex flex-col h-full group ${
+      isFullscreen 
+        ? "bg-black" 
+        : "rounded-3xl border border-cyan-500/30 bg-black/80 backdrop-blur-2xl p-6 shadow-[0_0_50px_rgba(0,0,0,0.9),inset_0_0_20px_rgba(34,211,238,0.05)] overflow-hidden"
+    }`}>
+      {!isFullscreen && <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-purple-500/5 to-pink-500/5 pointer-events-none"></div>}
       
       {/* Header and Basic Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-4 relative z-10 border-b border-white/10 pb-4 shrink-0">
+      {!isFullscreen && (
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4 relative z-10 border-b border-white/10 pb-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
             <Icon name="Aperture" size={22} className="text-purple-400 drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]" />
@@ -438,9 +448,11 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
            </button>
         </div>
       </div>
+      )}
 
       {/* Advanced Controls */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-4 relative z-10 bg-black/40 p-4 rounded-2xl border border-white/5 text-[9px] shrink-0">
+      {!isFullscreen && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 mb-4 relative z-10 bg-black/40 p-4 rounded-2xl border border-white/5 text-[9px] shrink-0">
         
         {renderNumberInput("Iteraciones", config.iter, 'iter', 100, 10000, 100)}
         {renderNumberInput("Zoom Inicial", config.zoom, 'zoom', 0.001, 0.5, 0.001)}
@@ -479,9 +491,11 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         {renderNumberInput("Grosor Línea", config.thickness, 'thickness', 0.5, 10.0, 0.5)}
 
       </div>
+      )}
       
       {/* Geometría Sagrada Controls */}
-      <div className="flex gap-2 mb-4 relative z-10 shrink-0">
+      {!isFullscreen && (
+        <div className="flex gap-2 mb-4 relative z-10 shrink-0">
           <button 
              onClick={() => setConfig(prev => ({ ...prev, sacredGeometryEnabled: !prev.sacredGeometryEnabled, sacredGeometryModes: !prev.sacredGeometryEnabled ? ['flowerOfLife'] : [] }))}
              className={`px-3 py-1 text-[10px] rounded-lg font-bold uppercase transition-colors ${config.sacredGeometryEnabled ? 'bg-cyan-500/30 text-cyan-200 border border-cyan-500/50' : 'bg-black/60 text-slate-400 border border-white/10'}`}
@@ -501,21 +515,28 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
               </select>
            )}
       </div>
+      )}
 
       <div 
-        className="relative w-full rounded-2xl overflow-hidden border border-white/10 bg-black/90 shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] flex-grow resize-y"
-        style={{ minHeight: '300px', height: '100%' }}
+        className={`relative w-full overflow-hidden border border-white/10 bg-black/90 flex-grow resize-y ${
+          isFullscreen ? 'h-full border-none' : 'rounded-2xl shadow-[inset_0_0_40px_rgba(0,0,0,0.9)]'
+        }`}
+        style={isFullscreen ? {} : { minHeight: '300px', height: '100%' }}
       >
         <canvas ref={canvasRef} className="w-full h-full block" />
         
-        <div className="absolute bottom-3 left-4 text-[9px] text-slate-500 font-mono tracking-widest uppercase pointer-events-none bg-black/60 px-3 py-1.5 rounded-lg border border-white/5">
-          Ecuación: Z_n+1 = Z_n * (k * e^iψ) | Ψ = 2π * (N / M) * AngleMultiplier
-        </div>
-        
-        {/* Resize handle icon */}
-        <div className="absolute bottom-0 right-0 p-2 text-white/20 pointer-events-none">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 15 21 21 15 21"></polyline><polyline points="9 3 3 3 3 9"></polyline></svg>
-        </div>
+        {!isFullscreen && (
+          <>
+            <div className="absolute bottom-3 left-4 text-[9px] text-slate-500 font-mono tracking-widest uppercase pointer-events-none bg-black/60 px-3 py-1.5 rounded-lg border border-white/5">
+              Ecuación: Z_n+1 = Z_n * (k * e^iψ) | Ψ = f * (π/180) * AngleMultiplier
+            </div>
+            
+            {/* Resize handle icon */}
+            <div className="absolute bottom-0 right-0 p-2 text-white/20 pointer-events-none">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 15 21 21 15 21"></polyline><polyline points="9 3 3 3 3 9"></polyline></svg>
+            </div>
+          </>
+        )}
       </div>
       
       {isFullscreen && (
