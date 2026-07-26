@@ -252,10 +252,13 @@ const App: React.FC = () => {
             <span className="text-xs font-bold uppercase tracking-[0.3em] text-cyan-100 drop-shadow-[0_0_8px_rgba(34,211,238,0.8)]">Versión Web V.7</span>
           </div>
           
-          <div className="relative inline-block">
-              <h1 className="font-display text-5xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 via-purple-300 to-pink-300 drop-shadow-[0_5px_15px_rgba(168,85,247,0.4)]" style={{ textShadow: '0 10px 30px rgba(168,85,247,0.3), 0 2px 10px rgba(34,211,238,0.5)' }}>
-                Omni-Frecuencias
-              </h1>
+          <div className="relative inline-block mt-4">
+              <div className="flex flex-col items-center gap-4">
+                <img src="/omnifrecuencias.png" alt="Omni Frecuencias Logo" className="w-24 h-24 object-contain animate-[pulse_4s_infinite] drop-shadow-[0_0_25px_rgba(34,211,238,0.6)]" />
+                <h1 className="font-display text-4xl md:text-7xl font-black mb-6 tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-cyan-300 via-purple-300 to-pink-300 drop-shadow-[0_5px_15px_rgba(168,85,247,0.4)]" style={{ textShadow: '0 10px 30px rgba(168,85,247,0.3), 0 2px 10px rgba(34,211,238,0.5)' }}>
+                  Omni-Frecuencias
+                </h1>
+              </div>
               <div className="absolute -inset-4 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-pink-500/20 blur-2xl -z-10 rounded-full opacity-50 mix-blend-screen"></div>
           </div>
           
@@ -437,6 +440,7 @@ const App: React.FC = () => {
         {viewMode === 'generator' && (
             <Generator 
                 audio={audio} 
+                isMasterPlaying={audio.isPlaying}
                 onStartLiveSession={(preset) => {
                     setPresetToStart(preset);
                     setShowStartSessionModal(true);

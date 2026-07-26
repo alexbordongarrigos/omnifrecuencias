@@ -10,10 +10,11 @@ interface Props {
   onUpdateOscillator?: (id: string, updates: Partial<OscillatorState>) => void;
   onRemoveOscillator?: (id: string) => void;
   getOscillatorAnalyser?: (id: string) => AnalyserNode | null;
+  isMasterPlaying?: boolean;
   height?: number;
 }
 
-export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequencies = [432], allOscillators = [], onUpdateOscillator, onRemoveOscillator, getOscillatorAnalyser, height = 450 }) => {
+export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequencies = [432], allOscillators = [], onUpdateOscillator, onRemoveOscillator, getOscillatorAnalyser, isMasterPlaying = true, height = 450 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -104,6 +105,9 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
   const isDraggingRef = useRef(false);
   const lastMouseRef = useRef({ x: 0, y: 0 });
 
+  const isMasterPlayingRef = useRef(isMasterPlaying);
+  useEffect(() => { isMasterPlayingRef.current = isMasterPlaying; }, [isMasterPlaying]);
+
   // Get color palette gradient arrays
   const getPaletteColors = (palette: CymaticsPalette) => {
     switch (palette) {
@@ -148,12 +152,15 @@ export const CymaticsVisualizer3D: React.FC<Props> = ({ analyser, activeFrequenc
     let time = 0;
 
     const render = () => {
-      time += 0.03 * config.vibrationSpeed;
+      const hasPlaying = allOscillators.some(o => o.isPlaying);
+      if (isMasterPlayingRef.current && hasPlaying) {
+        time += 0.03 * config.vibrationSpeed;
+      }
 
-      if (isRotating) {
+      if (isRotating && isMasterPlayingRef.current && hasPlaying) {
         angleY += 0.005;
       } else {
-        angleY = rotationY;
+        if (!isRotating) angleY = rotationY;
       }
 
       // Read audio FFT amplitude

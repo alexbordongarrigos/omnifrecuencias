@@ -14,6 +14,7 @@ import FileExplorer from './FileExplorer';
 
 interface Props {
   audio: ReturnType<typeof useAudio>;
+  isMasterPlaying: boolean;
   onStartLiveSession?: (preset: PresetContent) => void;
 }
 
@@ -37,7 +38,7 @@ interface ResonanceResult {
     sourceB: string;
 }
 
-const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
+const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession }) => {
   const { oscillators, addOscillator, removeOscillator, updateOscillator, setAllOscillators, getCombinedAnalyser, getOscillatorAnalyser } = audio;
   
   // Undo/Redo Hook (Control+Z / Cmd+Z)
@@ -443,6 +444,7 @@ const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
             onUpdateOscillator={handleUpdateOscillator}
             onRemoveOscillator={handleRemoveOscillator}
             getOscillatorAnalyser={getOscillatorAnalyser}
+            isMasterPlaying={isMasterPlaying}
             height={380}
           />
         ) : (
@@ -453,6 +455,7 @@ const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
             onUpdateOscillator={handleUpdateOscillator}
             onRemoveOscillator={handleRemoveOscillator}
             getOscillatorAnalyser={getOscillatorAnalyser}
+            isMasterPlaying={isMasterPlaying}
             height={380}
           />
         )}
@@ -460,8 +463,8 @@ const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
 
       {/* Global Controls */}
       {oscillators.length > 0 && (
-        <div className="bg-black/40 border border-white/10 p-5 rounded-2xl backdrop-blur-xl flex flex-wrap items-center justify-center gap-8 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
-            <div className="flex items-center gap-3 text-sm text-cyan-200 font-bold uppercase tracking-widest relative z-10">
+        <div className="bg-black/40 border border-white/10 p-5 rounded-2xl backdrop-blur-xl flex flex-col md:flex-row flex-wrap items-center justify-center gap-4 md:gap-8 shadow-[0_0_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
+            <div className="flex items-center gap-3 text-sm text-cyan-200 font-bold uppercase tracking-widest relative z-10 w-full md:w-auto justify-center md:justify-start">
                 <Icon name="Settings" size={18} className="text-cyan-400" />
                 Ajustes Globales
             </div>

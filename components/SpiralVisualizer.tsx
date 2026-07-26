@@ -11,6 +11,7 @@ interface Props {
   onUpdateOscillator?: (id: string, updates: Partial<OscillatorState>) => void;
   onRemoveOscillator?: (id: string) => void;
   getOscillatorAnalyser?: (id: string) => AnalyserNode | null;
+  isMasterPlaying?: boolean;
   height?: number;
 }
 
@@ -40,7 +41,7 @@ const DEFAULT_CONFIG: SpiralConfig = {
   bgMode: 'solid'
 };
 
-export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators = [], allOscillators = [], onUpdateOscillator, onRemoveOscillator, getOscillatorAnalyser, height = 450 }) => {
+export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators = [], allOscillators = [], onUpdateOscillator, onRemoveOscillator, getOscillatorAnalyser, isMasterPlaying = true, height = 450 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   
@@ -103,10 +104,12 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
   const activeOscillatorsRef = useRef(activeOscillators);
   const configRef = useRef(config);
   const analyserRef = useRef(analyser);
+  const isMasterPlayingRef = useRef(isMasterPlaying);
 
   useEffect(() => { activeOscillatorsRef.current = activeOscillators; }, [activeOscillators]);
   useEffect(() => { configRef.current = config; }, [config]);
   useEffect(() => { analyserRef.current = analyser; }, [analyser]);
+  useEffect(() => { isMasterPlayingRef.current = isMasterPlaying; }, [isMasterPlaying]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -165,8 +168,8 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       }
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
-      // Solo avanza el tiempo (rotación/movimiento) si hay frecuencias reproduciéndose y hay volumen real
-      if (hasPlaying && smoothedVol > 0.001) {
+      // Solo avanza el tiempo (rotación/movimiento) si el reproductor principal está activo y hay frecuencias
+      if (isMasterPlayingRef.current && hasPlaying) {
         time += 0.02 * currentConfig.speedMultiplier;
       }
 
