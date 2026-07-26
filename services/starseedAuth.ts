@@ -67,7 +67,7 @@ export const publishPresetToCloud = async (node: FileSystemNode, userId: string,
       content: presetContent,
       author_id: userId,
       is_public: isPublic,
-      category: node.content.oscillators[0]?.type || 'synergy'
+      category: (node.content as any).category || node.content.oscillators[0]?.type || 'synergy'
     })
     .select();
 

@@ -8,12 +8,17 @@ const Introduction: React.FC = () => {
       {/* Header */}
       <div className="text-center space-y-6">
         <div className="flex justify-center items-center gap-6 mb-4">
-           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-950/50 border border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.2)]">
-             <Icon name="Info" size={48} className="text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-cyan-950/50 border border-cyan-500/30 shadow-[0_0_30px_rgba(34,211,238,0.2)]" title="OmniFrecuencias">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-12 h-12 text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]">
+               <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h3l3 -9 6 18 3 -9h3" />
+               <circle cx="12" cy="12" r="10" strokeWidth="1" strokeDasharray="2 4" />
+             </svg>
            </div>
            <div className="w-8 h-px bg-gradient-to-r from-cyan-500/50 to-amber-500/50"></div>
-           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-950/50 border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)]" title="Starseed System">
-             <Icon name="Cloud" size={40} className="text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-amber-950/50 border border-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.2)]" title="Starseed OS">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M4.929 4.929l14.142 14.142M4.929 19.071L19.071 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
+             </svg>
            </div>
         </div>
         
@@ -81,35 +86,35 @@ const Introduction: React.FC = () => {
         </p>
 
         <div className="flex flex-wrap justify-center gap-4">
-          {/* OS Auto-Detection logic is conceptual here via JS but we show all options */}
-          <button className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all" onClick={() => alert('Descarga para macOS iniciada (WIP)')}>
+          {/* Enlaces a los Releases de GitHub */}
+          <a href="https://github.com/alexbordongarrigos/omnifrecuencias/releases/latest" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all">
             <Icon name="Apple" size={20} />
             <div className="text-left">
                <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Descargar para</span>
                <span className="block font-bold text-sm text-white">macOS</span>
             </div>
-          </button>
-          <button className="flex items-center gap-3 px-6 py-3 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 hover:border-blue-400 rounded-xl transition-all" onClick={() => alert('Descarga para Windows iniciada (WIP)')}>
+          </a>
+          <a href="https://github.com/alexbordongarrigos/omnifrecuencias/releases/latest" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-blue-950/40 hover:bg-blue-900/60 border border-blue-500/30 hover:border-blue-400 rounded-xl transition-all">
             <Icon name="Monitor" size={20} className="text-blue-400" />
             <div className="text-left">
                <span className="block text-[10px] text-blue-200/70 uppercase tracking-wider font-bold">Descargar para</span>
                <span className="block font-bold text-sm text-blue-100">Windows</span>
             </div>
-          </button>
-          <button className="flex items-center gap-3 px-6 py-3 bg-green-950/40 hover:bg-green-900/60 border border-green-500/30 hover:border-green-400 rounded-xl transition-all" onClick={() => alert('Descarga para Android iniciada (WIP)')}>
+          </a>
+          <a href="https://github.com/alexbordongarrigos/omnifrecuencias/releases/latest" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-green-950/40 hover:bg-green-900/60 border border-green-500/30 hover:border-green-400 rounded-xl transition-all">
             <Icon name="Smartphone" size={20} className="text-green-400" />
             <div className="text-left">
-               <span className="block text-[10px] text-green-200/70 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block text-[10px] text-green-200/70 uppercase tracking-wider font-bold">Descargar apk</span>
                <span className="block font-bold text-sm text-green-100">Android</span>
             </div>
-          </button>
-          <button className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all" onClick={() => alert('Descarga para iOS iniciada (WIP)')}>
+          </a>
+          <a href="https://github.com/alexbordongarrigos/omnifrecuencias/releases/latest" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-xl transition-all">
             <Icon name="Apple" size={20} />
             <div className="text-left">
-               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Descargar para</span>
+               <span className="block text-[10px] text-slate-400 uppercase tracking-wider font-bold">Instrucciones</span>
                <span className="block font-bold text-sm text-white">iOS</span>
             </div>
-          </button>
+          </a>
         </div>
       </div>
 

@@ -90,7 +90,9 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
       <div className="bg-black/80 border border-white/10 p-8 rounded-3xl backdrop-blur-xl w-full max-w-md shadow-[0_0_50px_rgba(245,158,11,0.2)]">
         <div className="flex justify-center mb-6">
           <div className="w-16 h-16 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
-            <Icon name="Cloud" size={32} />
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M4.929 4.929l14.142 14.142M4.929 19.071L19.071 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
+             </svg>
           </div>
         </div>
         <h2 className="text-2xl font-black text-white text-center mb-2">Starseed OS</h2>
@@ -148,7 +150,10 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
               </div>
             </div>
             <button onClick={() => setError('force_login')} className="px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-              <Icon name="Cloud" size={16} /> Login Starseed
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M4.929 4.929l14.142 14.142M4.929 19.071L19.071 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+              Login Starseed
             </button>
           </>
         )}
@@ -188,15 +193,20 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
           </div>
 
           <div className="flex gap-2 overflow-x-auto pb-4 mb-2 custom-scrollbar">
-            {CATEGORIES.map(cat => (
-               <button
-                 key={cat.id}
-                 onClick={() => setSelectedCategory(cat.id)}
-                 className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${selectedCategory === cat.id ? 'bg-white/20 border-white/40 text-white' : 'bg-black/40 border-white/10 text-slate-400 hover:bg-white/10'}`}
-               >
-                 {cat.label}
-               </button>
-            ))}
+            {['all', ...Array.from(new Set(presets.map(p => p.content?.category || 'Varios'))).filter(c => c !== 'all').sort()].map(cat => {
+               // Try to match with known CATEGORIES for a nicer label, else use the raw string
+               const knownCat = CATEGORIES.find(c => c.id === cat);
+               const label = knownCat ? knownCat.label : (cat === 'all' ? 'Todas' : cat);
+               return (
+                 <button
+                   key={cat}
+                   onClick={() => setSelectedCategory(cat)}
+                   className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${selectedCategory === cat ? 'bg-white/20 border-white/40 text-white' : 'bg-black/40 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                 >
+                   {label}
+                 </button>
+               );
+            })}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

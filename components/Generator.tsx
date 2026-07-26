@@ -439,6 +439,10 @@ const Generator: React.FC<Props> = ({ audio, onStartLiveSession }) => {
           <CymaticsVisualizer3D
             analyser={getCombinedAnalyser()}
             activeFrequencies={activeFreqsList}
+            allOscillators={oscillators}
+            onUpdateOscillator={handleUpdateOscillator}
+            onRemoveOscillator={handleRemoveOscillator}
+            getOscillatorAnalyser={getOscillatorAnalyser}
             height={380}
           />
         ) : (

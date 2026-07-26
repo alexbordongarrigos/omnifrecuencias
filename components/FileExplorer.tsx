@@ -215,9 +215,15 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
                                  alert('Debes iniciar sesión con Starseed OS (Pestaña Comunidad) para publicar presets.');
                                  return;
                                }
+                               const customCategory = window.prompt('Ingresa la categoría o carpeta pública para este preset (ej. Meditación, Solfeggio, Viaje Astral):', node.content.category || 'Varios');
+                               if (customCategory === null) return; // User cancelled
+                               
                                try {
-                                 await publishPresetToCloud(user.id, node.name, node.content);
-                                 alert('¡Preset publicado en Vibras con éxito!');
+                                 // Add custom category to the preset content before saving
+                                 node.content.category = customCategory.trim() || 'Varios';
+                                 
+                                 await publishPresetToCloud(node, user.id, true);
+                                 alert(`¡Preset publicado en Vibras bajo la categoría "${node.content.category}" con éxito!`);
                                } catch (err) {
                                  console.error(err);
                                  alert('Error al publicar el preset.');
