@@ -305,9 +305,31 @@ const OscillatorControls: React.FC<Props> = ({ osc, update, remove, analyser }) 
                     <Icon name="Sliders" size={14} className="text-amber-400" />
                     Modulación de Crestas y Valles
                 </h4>
-                <span className="text-[9px] text-amber-300/80 font-mono font-bold bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded">
-                    Distancia: {(osc.crestValleyRatio ?? 1.0).toFixed(2)}x
-                </span>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => {
+                            const f = osc.frequency;
+                            const magicRatio = 1.0 + 0.4 * Math.sin(f * Math.PI / 180);
+                            const magicDuty = 0.2 * Math.cos(f * Math.PI / 180);
+                            const magicHarmonic = (f % 100) / 200;
+                            update(osc.id, { crestValleyRatio: magicRatio, dutyCycle: magicDuty, harmonicDistortion: magicHarmonic });
+                        }}
+                        className="text-[9px] font-bold uppercase tracking-widest text-amber-300 hover:text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded px-2 py-1 transition-all"
+                        title="Alinear automáticamente con los patrones de esta frecuencia"
+                    >
+                        ⚡ Alinear
+                    </button>
+                    <button 
+                        onClick={() => update(osc.id, { crestValleyRatio: 1.0, dutyCycle: 0, harmonicDistortion: 0, phaseOffset: 0 })}
+                        className="text-[9px] font-bold uppercase tracking-widest text-slate-300 hover:text-white bg-slate-500/20 hover:bg-slate-500/40 border border-slate-500/40 rounded px-2 py-1 transition-all"
+                        title="Restablecer posiciones (Centrar)"
+                    >
+                        Centrar
+                    </button>
+                    <span className="text-[9px] text-amber-300/80 font-mono font-bold bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded">
+                        Dist: {(osc.crestValleyRatio ?? 1.0).toFixed(2)}x
+                    </span>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-[10px] relative z-10">

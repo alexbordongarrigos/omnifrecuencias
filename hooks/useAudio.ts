@@ -417,7 +417,16 @@ export const useAudio = () => {
 
   const centerAllPositions = () => {
     setOscillators(prev => prev.map(o => {
-      const updated = { ...o, panX: 0, panY: 0, panZ: 0 };
+      const updated = { 
+        ...o, 
+        panX: 0, 
+        panY: 0, 
+        panZ: 0,
+        crestValleyRatio: 1.0,
+        dutyCycle: 0,
+        harmonicDistortion: 0,
+        phaseOffset: 0
+      };
       updateOscillatorNodes(updated);
       return updated;
     }));

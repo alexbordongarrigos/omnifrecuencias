@@ -2,10 +2,15 @@ import React, { useRef, useEffect, useState } from 'react';
 import { SpiralConfig, CymaticsPalette, SacredGeometryMode, OscillatorState } from '../types';
 import Icon from './Icon';
 import * as GeometryDrawers from './geometryDrawers';
+import OscillatorControls from './OscillatorControls';
 
 interface Props {
   analyser: AnalyserNode | null;
   activeOscillators?: OscillatorState[];
+  allOscillators?: OscillatorState[];
+  onUpdateOscillator?: (id: string, updates: Partial<OscillatorState>) => void;
+  onRemoveOscillator?: (id: string) => void;
+  getOscillatorAnalyser?: (id: string) => AnalyserNode | null;
   height?: number;
 }
 
@@ -35,11 +40,21 @@ const DEFAULT_CONFIG: SpiralConfig = {
   bgMode: 'solid'
 };
 
-export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators = [], height = 450 }) => {
+export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators = [], allOscillators = [], onUpdateOscillator, onRemoveOscillator, getOscillatorAnalyser, height = 450 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   
   const [config, setConfig] = useState<SpiralConfig>(DEFAULT_CONFIG);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showFullscreenControls, setShowFullscreenControls] = useState(true);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
 
   const handleFullscreen = () => {
     if (containerRef.current) {
@@ -66,6 +81,14 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
     }
   };
 
+  const activeOscillatorsRef = useRef(activeOscillators);
+  const configRef = useRef(config);
+  const analyserRef = useRef(analyser);
+
+  useEffect(() => { activeOscillatorsRef.current = activeOscillators; }, [activeOscillators]);
+  useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { analyserRef.current = analyser; }, [analyser]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -73,13 +96,21 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
     if (!ctx) return;
 
     let animFrameId: number;
-    const fftData = new Uint8Array(analyser ? analyser.frequencyBinCount : 256);
+    let fftData = new Uint8Array(256);
     let time = 0;
     
     let smoothedVol = 0;
     let smoothedFreq = 432;
 
     const render = () => {
+      const currentAnalyser = analyserRef.current;
+      const currentConfig = configRef.current;
+      const currentOscillators = activeOscillatorsRef.current || [];
+      
+      if (currentAnalyser && currentAnalyser.frequencyBinCount !== fftData.length) {
+         fftData = new Uint8Array(currentAnalyser.frequencyBinCount);
+      }
+
       if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
         canvas.width = canvas.clientWidth;
         canvas.height = canvas.clientHeight;
@@ -91,27 +122,29 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       const cy = height / 2;
 
       let audioAmp = 0;
-      if (analyser) {
-        analyser.getByteFrequencyData(fftData);
+      if (currentAnalyser) {
+        currentAnalyser.getByteFrequencyData(fftData);
         let sum = 0;
         for (let i = 0; i < 64; i++) sum += fftData[i];
         audioAmp = (sum / 64 / 255);
       }
 
-      const playingOscillators = activeOscillators.filter(o => o.isPlaying);
+      const playingOscillators = currentOscillators.filter(o => o.isPlaying);
       const activeFreqs = playingOscillators.map(o => o.frequency);
       const primaryFreq = activeFreqs.length > 0 ? activeFreqs[0] : 432;
       
       smoothedVol += (audioAmp - smoothedVol) * 0.1;
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
-      time += 0.02 * config.speedMultiplier;
+      if (playingOscillators.length > 0) {
+        time += 0.02 * currentConfig.speedMultiplier;
+      }
 
       // Background
-      if (config.bgMode === 'solid') {
+      if (currentConfig.bgMode === 'solid') {
         ctx.fillStyle = `rgba(0, 0, 0, 0.2)`;
         ctx.fillRect(0, 0, width, height);
-      } else if (config.bgMode === 'gradient') {
+      } else if (currentConfig.bgMode === 'gradient') {
         const grd = ctx.createLinearGradient(0, 0, width, height);
         grd.addColorStop(0, `rgba(10, 0, 20, 0.2)`);
         grd.addColorStop(1, `rgba(0, 20, 40, 0.2)`);
@@ -122,43 +155,62 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
          ctx.fillRect(0, 0, width, height);
       }
 
-      const colors = getPaletteColors(config.colorPalette);
-      const iter = config.iter;
+      const colors = getPaletteColors(currentConfig.colorPalette);
+      // For infiniteDepth, force high iter for tunnel effect
+      const iter = currentConfig.infiniteDepth ? 10000 : currentConfig.iter;
+      const baseZoom = currentConfig.infiniteDepth ? 0.001 : currentConfig.zoom;
       const minDim = Math.min(width, height);
       
       // Calculate N and M based on Cymatics Formula to link geometry
       const calcN = (f: number) => 3 + Math.floor((f % 100) / 25);
       const calcM = (f: number) => 5 + Math.floor((f % 50) / 10);
 
-      const drawSpiral = (freq: number, vol: number, baseColor: string, isUnified: boolean) => {
-        let k = config.k;
+      const drawSpiral = (osc: OscillatorState | null, freq: number, vol: number, baseColor: string, isUnified: boolean) => {
+        let k = currentConfig.k * (osc && osc.crestValleyRatio ? osc.crestValleyRatio : 1.0);
         
-        if (config.autoPilot) {
+        if (currentConfig.autoPilot) {
           k = 1.002 + (Math.sin(time * 0.1) * 0.005) + (vol * 0.005);
         }
         
         // Relación Fractal Matemática con Cimática: N / M
         const N = calcN(freq);
         const M = calcM(freq);
-        const psi = 2 * Math.PI * (N / M) * config.angleMultiplier;
+        let angleMult = currentConfig.angleMultiplier * (osc && osc.dutyCycle ? 1.0 + osc.dutyCycle : 1.0);
+        const psi = 2 * Math.PI * (N / M) * angleMult;
 
         const rotReal = Math.cos(psi);
         const rotImag = Math.sin(psi);
 
-        let zReal = config.z0_r !== 0 ? config.z0_r : 1.0 + (vol * 0.5);
-        let zImag = config.z0_i !== 0 ? config.z0_i : 0.0;
+        let z0_r = currentConfig.z0_r !== 0 ? currentConfig.z0_r : 1.0 + (vol * 0.5);
+        let z0_i = currentConfig.z0_i !== 0 ? currentConfig.z0_i : 0.0;
+
+        let zReal = z0_r;
+        let zImag = z0_i;
+        
+        const loopStart = currentConfig.infiniteDepth ? -iter : 0;
+        const loopEnd = iter;
+
+        if (currentConfig.infiniteDepth) {
+           const startMag = Math.pow(k, -iter);
+           const startAngle = -iter * psi;
+           const rotStartR = Math.cos(startAngle);
+           const rotStartI = Math.sin(startAngle);
+           
+           zReal = (z0_r * rotStartR - z0_i * rotStartI) * startMag;
+           zImag = (z0_r * rotStartI + z0_i * rotStartR) * startMag;
+        }
 
         ctx.save();
         ctx.translate(cx, cy);
 
-        let currentZoom = config.zoom * minDim;
+        let currentZoom = baseZoom * minDim;
         
-        if (config.infiniteDepth) {
+        if (currentConfig.infiniteDepth) {
             const safePsi = Math.abs(psi) > 0.0001 ? psi : 0.0001;
             const iterPerTurn = 2 * Math.PI / Math.abs(safePsi);
             const growthPerTurn = Math.pow(k, iterPerTurn);
             
-            const zoomPhase = (time * config.depthSpeed * 0.1) % 1;
+            const zoomPhase = (time * currentConfig.depthSpeed * 0.1) % 1;
             
             const continuousScale = Math.pow(growthPerTurn, zoomPhase);
             // Rotacion para contrarrestar el escalado y crear el ciclo perfecto
@@ -166,8 +218,8 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
 
             ctx.scale(continuousScale, continuousScale);
             ctx.rotate(rotationOffset);
-        } else if (config.depthMode) {
-            const zF = 1 + (time * config.depthSpeed) % 15;
+        } else if (currentConfig.depthMode) {
+            const zF = 1 + (time * currentConfig.depthSpeed) % 15;
             ctx.scale(zF, zF);
         }
 
@@ -176,7 +228,7 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         let prevY = -zImag * currentZoom;
         ctx.moveTo(prevX, prevY);
 
-        for (let n = 0; n < iter; n++) {
+        for (let n = loopStart; n < loopEnd; n++) {
           const zrK = zReal * k;
           const ziK = zImag * k;
 
@@ -189,20 +241,20 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           let px = zReal * currentZoom;
           let py = -zImag * currentZoom;
 
-          if (config.waveStyle) {
+          if (currentConfig.waveStyle) {
              const wavePhase = n * 0.1 + time * (freq / 100);
              const dx = zReal;
              const dy = -zImag;
              const mag = Math.sqrt(dx*dx + dy*dy) || 1;
              const nx = dy / mag;
              const ny = -dx / mag;
-             const waveOffset = Math.sin(wavePhase) * config.waveAmplitude * 20 * (vol + 0.2);
+             const waveOffset = Math.sin(wavePhase) * currentConfig.waveAmplitude * 20 * (vol + 0.2);
              px += nx * waveOffset;
              py += ny * waveOffset;
           }
 
           if (!Number.isFinite(px) || !Number.isFinite(py) || Math.abs(px) > width*5 || Math.abs(py) > height*5) {
-            break;
+            if (n > 0) break; // Only break if we are zooming way past the screen outwards
           }
 
           ctx.lineTo(px, py);
@@ -219,14 +271,14 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           ctx.shadowColor = baseColor;
         }
         
-        ctx.lineWidth = (config.thickness + (vol * 3)) * Math.max(0.01, config.illumination);
+        ctx.lineWidth = (currentConfig.thickness + (vol * 3)) * Math.max(0.01, currentConfig.illumination);
         // Si illuminacion es 0, desactivamos glow
-        if (config.illumination > 0) {
-           ctx.shadowBlur = (10 + vol * 30) * config.illumination;
+        if (currentConfig.illumination > 0) {
+           ctx.shadowBlur = (10 + vol * 30) * currentConfig.illumination;
         } else {
            ctx.shadowBlur = 0;
         }
-        ctx.globalAlpha = config.opacity;
+        ctx.globalAlpha = currentConfig.opacity;
         ctx.stroke();
         
         ctx.restore();
@@ -234,7 +286,7 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
 
       if (playingOscillators.length === 0) {
         // Render a default spiral responding to smoothed background frequency
-        drawSpiral(smoothedFreq, smoothedVol, colors[0], true);
+        drawSpiral(null, smoothedFreq, smoothedVol, colors[0], true);
       } else {
         // Ondas Independientes separadas vs Unidas
         const independentOscs = playingOscillators.filter(o => o.isIndependent);
@@ -243,23 +295,23 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         if (unifiedOscs.length > 0) {
            const avgFreq = unifiedOscs.reduce((a, b) => a + b.frequency, 0) / unifiedOscs.length;
            // Combined volume could be average or max. Let's use smoothed global amplitude
-           drawSpiral(avgFreq, smoothedVol, colors[0], true);
+           drawSpiral(null, avgFreq, smoothedVol, colors[0], true);
         }
 
         independentOscs.forEach((osc, idx) => {
-           drawSpiral(osc.frequency, smoothedVol * osc.volume, osc.color || colors[idx % colors.length], false);
+           drawSpiral(osc, osc.frequency, smoothedVol * osc.volume, osc.color || colors[idx % colors.length], false);
         });
       }
 
       // Sacred Geometries
-      if (config.sacredGeometryEnabled && config.sacredGeometryModes.length > 0) {
-         ctx.globalAlpha = config.opacity * 0.5;
+      if (currentConfig.sacredGeometryEnabled && currentConfig.sacredGeometryModes.length > 0) {
+         ctx.globalAlpha = currentConfig.opacity * 0.5;
          const baseHue = time * 20 % 360;
          const r = minDim * 0.4 + (smoothedVol * minDim * 0.1);
-         config.sacredGeometryModes.forEach(mode => {
-            if (mode === 'flowerOfLife') GeometryDrawers.drawFlowerOfLife(ctx, cx, cy, r / 3, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, config.thickness);
-            if (mode === 'metatron') GeometryDrawers.drawMetatron(ctx, cx, cy, r, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, config.thickness);
-            if (mode === 'torus') GeometryDrawers.drawTorus(ctx, cx, cy, r, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, config.thickness);
+         currentConfig.sacredGeometryModes.forEach(mode => {
+            if (mode === 'flowerOfLife') GeometryDrawers.drawFlowerOfLife(ctx, cx, cy, r / 3, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, currentConfig.thickness);
+            if (mode === 'metatron') GeometryDrawers.drawMetatron(ctx, cx, cy, r, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, currentConfig.thickness);
+            if (mode === 'torus') GeometryDrawers.drawTorus(ctx, cx, cy, r, time, 0.5, 0.1, baseHue, 100, 50, smoothedVol, currentConfig.thickness);
          });
       }
 
@@ -270,7 +322,7 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
 
     render();
     return () => cancelAnimationFrame(animFrameId);
-  }, [analyser, activeOscillators, config]);
+  }, []); // Empty dependency array, relies on refs to avoid recreation
 
   // Helper render for input rows
   const renderNumberInput = (
@@ -438,6 +490,52 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 15 21 21 15 21"></polyline><polyline points="9 3 3 3 3 9"></polyline></svg>
         </div>
       </div>
+      
+      {/* Fullscreen Overlay Controls */}
+      {isFullscreen && (
+        <div 
+           className={`absolute inset-0 z-50 flex flex-col pointer-events-none ${showFullscreenControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+           onMouseMove={() => !showFullscreenControls && setShowFullscreenControls(true)}
+        >
+            <div className="absolute top-4 right-4 pointer-events-auto">
+                <button 
+                  onClick={() => setShowFullscreenControls(!showFullscreenControls)}
+                  className="bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 hover:border-cyan-500/50 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                >
+                    <Icon name={showFullscreenControls ? "EyeOff" : "Eye"} size={14} />
+                    {showFullscreenControls ? 'Ocultar Controles' : 'Mostrar Controles'}
+                </button>
+            </div>
+            
+            {showFullscreenControls && (
+                <div className="absolute bottom-4 left-4 right-4 pointer-events-auto max-h-[40vh] overflow-y-auto custom-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                            <Icon name="Sliders" size={14} />
+                            Frecuencias Activas
+                        </h3>
+                        <button 
+                            onClick={handleFullscreen}
+                            className="text-slate-400 hover:text-white px-3 py-1 bg-white/5 hover:bg-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
+                        >
+                            Salir de Pantalla Completa
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {allOscillators.map(osc => (
+                            <OscillatorControls 
+                                key={osc.id} 
+                                osc={osc} 
+                                update={onUpdateOscillator || (() => {})} 
+                                remove={onRemoveOscillator || (() => {})}
+                                analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+      )}
     </div>
   );
 };
