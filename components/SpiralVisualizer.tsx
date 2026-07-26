@@ -47,13 +47,32 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
   const [config, setConfig] = useState<SpiralConfig>(DEFAULT_CONFIG);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showFullscreenControls, setShowFullscreenControls] = useState(true);
+  const hideControlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetHideControlsTimeout = () => {
+    setShowFullscreenControls(true);
+    if (hideControlsTimeoutRef.current) {
+      clearTimeout(hideControlsTimeoutRef.current);
+    }
+    hideControlsTimeoutRef.current = setTimeout(() => {
+      setShowFullscreenControls(false);
+    }, 3000);
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
+      if (!!document.fullscreenElement) {
+        resetHideControlsTimeout();
+      } else {
+        if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+      }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (hideControlsTimeoutRef.current) clearTimeout(hideControlsTimeoutRef.current);
+    };
   }, []);
 
   const handleFullscreen = () => {
@@ -130,12 +149,13 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       }
 
       const playingOscillators = currentOscillators.filter(o => o.isPlaying);
-      const activeFreqs = playingOscillators.map(o => o.frequency);
+      const activeFreqs = currentOscillators.map(o => o.frequency); // Use ALL current oscillators for geometry
       const primaryFreq = activeFreqs.length > 0 ? activeFreqs[0] : 432;
       
       smoothedVol += (audioAmp - smoothedVol) * 0.1;
       smoothedFreq += (primaryFreq - smoothedFreq) * 0.1;
 
+      // Solo avanza el tiempo (rotación/movimiento) si hay al menos un oscilador reproduciéndose
       if (playingOscillators.length > 0) {
         time += 0.02 * currentConfig.speedMultiplier;
       }
@@ -156,9 +176,8 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
       }
 
       const colors = getPaletteColors(currentConfig.colorPalette);
-      // For infiniteDepth, force high iter for tunnel effect
-      const iter = currentConfig.infiniteDepth ? 10000 : currentConfig.iter;
-      const baseZoom = currentConfig.infiniteDepth ? 0.001 : currentConfig.zoom;
+      const iter = currentConfig.iter;
+      const baseZoom = currentConfig.zoom;
       const minDim = Math.min(width, height);
       
       // Calculate N and M based on Cymatics Formula to link geometry
@@ -284,22 +303,24 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         ctx.restore();
       };
 
-      if (playingOscillators.length === 0) {
+      if (currentOscillators.length === 0) {
         // Render a default spiral responding to smoothed background frequency
         drawSpiral(null, smoothedFreq, smoothedVol, colors[0], true);
       } else {
-        // Ondas Independientes separadas vs Unidas
-        const independentOscs = playingOscillators.filter(o => o.isIndependent);
-        const unifiedOscs = playingOscillators.filter(o => !o.isIndependent);
+        // Ondas Independientes separadas vs Unidas (usando todos los osciladores, no solo los que suenan)
+        const independentOscs = currentOscillators.filter(o => o.isIndependent);
+        const unifiedOscs = currentOscillators.filter(o => !o.isIndependent);
 
         if (unifiedOscs.length > 0) {
            const avgFreq = unifiedOscs.reduce((a, b) => a + b.frequency, 0) / unifiedOscs.length;
-           // Combined volume could be average or max. Let's use smoothed global amplitude
-           drawSpiral(null, avgFreq, smoothedVol, colors[0], true);
+           // Volume applies to line glow/amplitude. If not playing, use 0.
+           const maxVol = unifiedOscs.some(o => o.isPlaying) ? smoothedVol : 0;
+           drawSpiral(null, avgFreq, maxVol, colors[0], true);
         }
 
         independentOscs.forEach((osc, idx) => {
-           drawSpiral(osc, osc.frequency, smoothedVol * osc.volume, osc.color || colors[idx % colors.length], false);
+           const vol = osc.isPlaying ? smoothedVol * osc.volume : 0;
+           drawSpiral(osc, osc.frequency, vol, osc.color || colors[idx % colors.length], false);
         });
       }
 
@@ -435,7 +456,19 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         
         <div>
           <span className="text-slate-400 uppercase font-bold tracking-wider block mb-1 text-emerald-400">Túnel Infinito (Continuo)</span>
-          <button onClick={() => setConfig(prev => ({ ...prev, infiniteDepth: !prev.infiniteDepth }))} className={`w-full py-1.5 rounded border text-[10px] uppercase font-bold transition-colors ${config.infiniteDepth ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
+          <button 
+            onClick={() => {
+              setConfig(prev => {
+                const nextVal = !prev.infiniteDepth;
+                return { 
+                  ...prev, 
+                  infiniteDepth: nextVal,
+                  iter: nextVal ? 10000 : 1000,
+                  zoom: nextVal ? 0.001 : 0.05
+                };
+              });
+            }} 
+            className={`w-full py-1.5 rounded border text-[10px] uppercase font-bold transition-colors ${config.infiniteDepth ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' : 'bg-black/40 text-slate-400 border-white/10'}`}>
             {config.infiniteDepth ? 'Activo' : 'Inactivo'}
           </button>
         </div>
@@ -491,49 +524,53 @@ export const SpiralVisualizer: React.FC<Props> = ({ analyser, activeOscillators 
         </div>
       </div>
       
-      {/* Fullscreen Overlay Controls */}
       {isFullscreen && (
         <div 
-           className={`absolute inset-0 z-50 flex flex-col pointer-events-none ${showFullscreenControls ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
-           onMouseMove={() => !showFullscreenControls && setShowFullscreenControls(true)}
+           className="absolute inset-0 z-50 flex flex-col pointer-events-none"
+           onMouseMove={resetHideControlsTimeout}
+           onClick={() => !showFullscreenControls && resetHideControlsTimeout()}
         >
-            <div className="absolute top-4 right-4 pointer-events-auto">
-                <button 
-                  onClick={() => setShowFullscreenControls(!showFullscreenControls)}
-                  className="bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 hover:border-cyan-500/50 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]"
-                >
-                    <Icon name={showFullscreenControls ? "EyeOff" : "Eye"} size={14} />
-                    {showFullscreenControls ? 'Ocultar Controles' : 'Mostrar Controles'}
-                </button>
-            </div>
+            <div className={`absolute inset-0 transition-opacity duration-500 ${showFullscreenControls ? 'opacity-100' : 'opacity-0'}`}>
+              <div className="absolute top-4 right-4 pointer-events-auto">
+                  <button 
+                    onClick={() => {
+                        setShowFullscreenControls(false);
+                    }}
+                    className="bg-black/60 backdrop-blur-md border border-white/20 px-3 py-2 rounded-xl text-white text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black/80 hover:border-cyan-500/50 transition-all shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                  >
+                      <Icon name="EyeOff" size={14} />
+                      Ocultar Controles
+                  </button>
+              </div>
             
-            {showFullscreenControls && (
-                <div className="absolute bottom-4 left-4 right-4 pointer-events-auto max-h-[40vh] overflow-y-auto custom-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-                            <Icon name="Sliders" size={14} />
-                            Frecuencias Activas
-                        </h3>
-                        <button 
-                            onClick={handleFullscreen}
-                            className="text-slate-400 hover:text-white px-3 py-1 bg-white/5 hover:bg-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
-                        >
-                            Salir de Pantalla Completa
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {allOscillators.map(osc => (
-                            <OscillatorControls 
-                                key={osc.id} 
-                                osc={osc} 
-                                update={onUpdateOscillator || (() => {})} 
-                                remove={onRemoveOscillator || (() => {})}
-                                analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
+              {showFullscreenControls && (
+                  <div className="absolute bottom-4 left-4 right-4 pointer-events-auto max-h-[40vh] overflow-y-auto custom-scrollbar bg-black/60 backdrop-blur-xl border border-white/10 p-4 rounded-3xl shadow-[0_0_50px_rgba(0,0,0,0.8)]" onMouseMove={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-cyan-400 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                              <Icon name="Sliders" size={14} />
+                              Frecuencias Activas
+                          </h3>
+                          <button 
+                              onClick={handleFullscreen}
+                              className="text-slate-400 hover:text-white px-3 py-1 bg-white/5 hover:bg-red-500/20 rounded-lg text-[10px] font-bold uppercase tracking-widest border border-white/5 transition-colors"
+                          >
+                              Salir de Pantalla Completa
+                          </button>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {allOscillators.map(osc => (
+                              <OscillatorControls 
+                                  key={osc.id} 
+                                  osc={osc} 
+                                  update={onUpdateOscillator || (() => {})} 
+                                  remove={onRemoveOscillator || (() => {})}
+                                  analyser={getOscillatorAnalyser ? getOscillatorAnalyser(osc.id) : null}
+                              />
+                          ))}
+                      </div>
+                  </div>
+              )}
+            </div>
         </div>
       )}
     </div>
