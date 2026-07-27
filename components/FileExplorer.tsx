@@ -20,6 +20,8 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [saveFileName, setSaveFileName] = useState('');
+  const [saveFileCategory, setSaveFileCategory] = useState('synergy');
+  const [saveFileDescription, setSaveFileDescription] = useState('');
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
   
@@ -47,7 +49,12 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
 
   const handleSave = () => {
     if (saveFileName.trim() && currentConfig) {
-      fs.saveFile(currentFolderId, saveFileName, currentConfig);
+      const newConfig = {
+        ...currentConfig,
+        category: saveFileCategory,
+        description: saveFileDescription,
+      };
+      fs.saveFile(currentFolderId, saveFileName, newConfig);
       onClose();
     }
   };
@@ -318,15 +325,41 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
 
            <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
              {mode === 'save' && (
-               <div className="flex-1 sm:w-72 relative">
-                  <input 
-                    type="text" 
-                    placeholder="Nombre del archivo..."
-                    value={saveFileName}
-                    onChange={(e) => setSaveFileName(e.target.value)}
-                    className="w-full bg-black/60 border border-cyan-500/50 rounded-xl pl-4 pr-12 py-3 text-sm text-white focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.4)] focus:outline-none transition-all placeholder:text-slate-500"
-                  />
-                  <div className="absolute right-4 top-3.5 text-cyan-500/50 pointer-events-none text-xs font-bold font-mono">.json</div>
+               <div className="flex-1 sm:w-80 relative flex flex-col gap-2">
+                  <div className="relative">
+                    <input 
+                      type="text" 
+                      placeholder="Nombre del archivo..."
+                      value={saveFileName}
+                      onChange={(e) => setSaveFileName(e.target.value)}
+                      className="w-full bg-black/60 border border-cyan-500/50 rounded-xl pl-4 pr-16 py-3 text-sm text-white focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(34,211,238,0.4)] focus:outline-none transition-all placeholder:text-slate-500"
+                    />
+                    <div className="absolute right-4 top-3.5 text-cyan-500/50 pointer-events-none text-xs font-bold font-mono">.omni</div>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <select
+                      value={saveFileCategory}
+                      onChange={(e) => setSaveFileCategory(e.target.value)}
+                      className="w-1/3 bg-black/60 border border-cyan-500/30 rounded-xl px-2 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none transition-all"
+                    >
+                      <option value="brain">Neuroacústica</option>
+                      <option value="pyramid">Megalitos</option>
+                      <option value="music">Música Sagrada</option>
+                      <option value="chakras">Chakras & Vórtex</option>
+                      <option value="rhythms">Ritmos e Isocrónicos</option>
+                      <option value="microtonal">Pitagóricas & Microtonales</option>
+                      <option value="synergy">Sinergias Maestras</option>
+                    </select>
+                    
+                    <input 
+                      type="text" 
+                      placeholder="Breve descripción..."
+                      value={saveFileDescription}
+                      onChange={(e) => setSaveFileDescription(e.target.value)}
+                      className="w-2/3 bg-black/60 border border-cyan-500/30 rounded-xl px-3 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none transition-all placeholder:text-slate-500"
+                    />
+                  </div>
                </div>
              )}
 

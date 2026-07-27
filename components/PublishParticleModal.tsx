@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/starseedAuth';
 import Icon from './Icon';
-import { OscillatorState, FileSystemNode } from '../types';
+import { OscillatorState, FileSystemNode, PresetContent } from '../types';
 import { StarseedUser } from '../services/starseedAuth';
+import FileExplorer from './FileExplorer';
+import { useFileSystem } from '../hooks/useFileSystem';
 
 const STORAGE_KEY = 'omni_holographic_fs_v1';
 
@@ -30,26 +32,14 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sourceMode, setSourceMode] = useState<'current' | 'library'>('current');
-  const [libraryFiles, setLibraryFiles] = useState<FileSystemNode[]>([]);
-  const [selectedFileId, setSelectedFileId] = useState<string>('');
+  const [selectedFileContent, setSelectedFileContent] = useState<PresetContent | null>(null);
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fs = useFileSystem();
 
-  React.useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const parsed: FileSystemNode = JSON.parse(saved);
-        const files = getAllFiles(parsed);
-        setLibraryFiles(files);
-        if (files.length > 0) {
-          setSelectedFileId(files[0].id);
-        }
-      } catch (e) {
-        console.error("Failed to parse library files", e);
-      }
-    }
-  }, []);
+  // Remove the old linear library loading useEffect since we use FileExplorer
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +50,11 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
     let dataToPublish = oscillators;
 
     if (sourceMode === 'library') {
-      const selectedFile = libraryFiles.find(f => f.id === selectedFileId);
-      if (!selectedFile || !selectedFile.content || !selectedFile.content.oscillators) {
-        setError("El archivo seleccionado no es válido o está vacío.");
+      if (!selectedFileContent || !selectedFileContent.oscillators) {
+        setError("Selecciona un archivo de tu biblioteca para publicar.");
         return;
       }
-      dataToPublish = selectedFile.content.oscillators;
+      dataToPublish = selectedFileContent.oscillators;
     }
 
     if (dataToPublish.length === 0) {
@@ -78,12 +67,16 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
 
     try {
       const payload = {
-        title: title.trim(),
-        description: description.trim(),
+        name: title.trim(),
+        content: {
+          oscillators: dataToPublish,
+          description: description.trim(),
+          tags: ['omni', 'frecuencias'],
+          category: selectedFileContent?.category || 'synergy'
+        },
         author_id: user.id,
-        // Removed author_name to fix schema cache error
-        data: dataToPublish,
-        tags: ['omni', 'frecuencias']
+        is_public: true,
+        category: selectedFileContent?.category || 'synergy'
       };
 
       const { error: dbError } = await supabase
@@ -147,21 +140,20 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
             {sourceMode === 'library' && (
               <div>
                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Seleccionar Archivo</label>
-                 {libraryFiles.length > 0 ? (
-                    <select
-                      value={selectedFileId}
-                      onChange={e => setSelectedFileId(e.target.value)}
-                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                 
+                 <div className="flex items-center gap-3 bg-black/50 border border-white/10 rounded-xl px-4 py-3">
+                    <Icon name="FileText" size={20} className={selectedFileName ? "text-purple-400" : "text-slate-500"} />
+                    <span className="flex-1 text-sm font-medium text-slate-300 truncate">
+                      {selectedFileName || 'Ningún archivo seleccionado'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowFileExplorer(true)}
+                      className="px-3 py-1.5 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg hover:bg-purple-500/30 transition-colors border border-purple-500/30"
                     >
-                      {libraryFiles.map(file => (
-                        <option key={file.id} value={file.id}>{file.name}</option>
-                      ))}
-                    </select>
-                 ) : (
-                    <div className="text-sm text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
-                      No tienes archivos guardados en tu biblioteca local.
-                    </div>
-                 )}
+                      Explorar
+                    </button>
+                 </div>
               </div>
             )}
             <div>
@@ -216,6 +208,30 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
           </div>
         </form>
       </div>
+      
+      {showFileExplorer && (
+        <FileExplorer
+          mode="load"
+          fs={fs}
+          onClose={() => setShowFileExplorer(false)}
+          onFileSelect={(content) => {
+             setSelectedFileContent(content);
+             // We don't have the node name directly here since onFileSelect only passes content, 
+             // but we can look it up in fs or let the user type the name.
+             // Wait, let's just use a default or find it in fs.
+             // A better approach is to change FileExplorer to pass the node name if we can, 
+             // but to avoid changing FileExplorer again, let's find the file by content.
+             const fileNode = getAllFiles(fs.root).find(f => f.content === content);
+             if (fileNode) {
+               setSelectedFileName(fileNode.name);
+               setTitle(fileNode.name);
+             } else {
+               setSelectedFileName('Archivo Seleccionado');
+             }
+             if (content.description) setDescription(content.description);
+          }}
+        />
+      )}
     </div>
   );
 };
