@@ -19,6 +19,7 @@ class MeshNetworkManager {
   private listeners: ((nodes: MeshNode[]) => void)[] = [];
   public state: MeshConnectionState = 'disconnected';
   private stateListeners: ((state: MeshConnectionState) => void)[] = [];
+  private dataListeners: ((data: any) => void)[] = [];
 
   // Emit state changes
   private setState(newState: MeshConnectionState) {
@@ -37,6 +38,13 @@ class MeshNetworkManager {
     this.listeners.push(listener);
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  public onDataReceive(listener: (data: any) => void) {
+    this.dataListeners.push(listener);
+    return () => {
+      this.dataListeners = this.dataListeners.filter(l => l !== listener);
     };
   }
 
@@ -85,6 +93,23 @@ class MeshNetworkManager {
     this.setState('disconnected');
     this.nodes.clear();
     this.notifyListeners();
+  }
+
+  public async broadcastData(data: any) {
+    if (this.state !== 'connected' || !this.port) return;
+    
+    // En una implementación real de Meshtastic enviaríamos un protobuf 
+    // a través del puerto serial. Aquí simulamos la interfaz.
+    try {
+      const encoder = new TextEncoder();
+      const writer = this.port.writable?.getWriter();
+      if (writer) {
+        await writer.write(encoder.encode(`DATA:${JSON.stringify(data)}\n`));
+        writer.releaseLock();
+      }
+    } catch (e) {
+      console.error("Error broadcast mesh:", e);
+    }
   }
 
   /**
@@ -145,6 +170,14 @@ class MeshNetworkManager {
             snr
           });
           this.notifyListeners();
+        }
+      } else if (line.includes("DATA:")) {
+        try {
+          const jsonStr = line.split("DATA:")[1];
+          const payload = JSON.parse(jsonStr);
+          this.dataListeners.forEach(fn => fn(payload));
+        } catch (e) {
+          console.error("Mesh data parse error", e);
         }
       }
     });

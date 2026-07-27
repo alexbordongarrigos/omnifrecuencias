@@ -342,36 +342,40 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                 </div>
 
                 {/* 2D / 3D Cymatics Selector Tabs */}
-                <div className="flex flex-wrap items-center gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-full lg:w-fit">
+                <div className="grid grid-cols-3 sm:flex items-center gap-1 sm:gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-full lg:w-fit">
                   <button
                     onClick={() => setVizTab('2d')}
-                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
                       vizTab === '2d'
                         ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
                         : 'text-slate-500 hover:text-white'
                     }`}
                   >
-                    <Icon name="Activity" size={14} /> Osciloscopio 2D
+                    <Icon name="Activity" size={16} className="sm:w-3.5 sm:h-3.5" /> 
+                    <span className="hidden sm:inline">Osciloscopio 2D</span>
+                    <span className="sm:hidden">Oscilo-<br/>scopio</span>
                   </button>
                   <button
                     onClick={() => setVizTab('3d')}
-                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
                       vizTab === '3d'
                         ? 'bg-purple-950/60 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
                         : 'text-slate-500 hover:text-white'
                     }`}
                   >
-                    <Icon name="Orbit" size={14} /> Cimática 3D
+                    <Icon name="Orbit" size={16} className="sm:w-3.5 sm:h-3.5" />
+                    <span>Cimática<br className="sm:hidden"/> 3D</span>
                   </button>
                   <button
                     onClick={() => setVizTab('spiral')}
-                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
                       vizTab === 'spiral'
                         ? 'bg-pink-950/60 text-pink-300 border border-pink-500/40 shadow-[0_0_15px_rgba(236,72,153,0.3)]'
                         : 'text-slate-500 hover:text-white'
                     }`}
                   >
-                    <Icon name="Aperture" size={14} /> Espiral Fractal
+                    <Icon name="Aperture" size={16} className="sm:w-3.5 sm:h-3.5" />
+                    <span>Espiral<br className="sm:hidden"/> Fractal</span>
                   </button>
                 </div>
             </div>

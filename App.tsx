@@ -9,7 +9,8 @@ import Generator from './components/Generator';
 import GlobalPlayer from './components/GlobalPlayer';
 import LandingPage from './components/LandingPage';
 import OnlineLibrary from './components/OnlineLibrary';
-import LiveSessionView from './components/LiveSessionView';
+import { useFileSystem } from './hooks/useFileSystem';
+import FileExplorer from './components/FileExplorer';
 import StartLiveSessionModal from './components/StartLiveSessionModal';
 import LiveSyncCall from './components/LiveSyncCall';
 import Introduction from './components/Introduction';
@@ -310,16 +311,8 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* --- LIVE SESSION VIEW --- */}
-        {activeSession ? (
-           <div className="h-[80vh]">
-              <LiveSessionView 
-                session={activeSession} 
-                onLeave={() => setActiveSession(null)} 
-              />
-           </div>
-        ) : (
-           <>
+        {/* --- MAIN VIEWS --- */}
+        <>
             {/* --- VIEW: INTRO --- */}
             {viewMode === 'intro' && <Introduction />}
             
@@ -469,7 +462,10 @@ const App: React.FC = () => {
                      setViewMode('generator');
                  }
               }}
-              onJoinSession={(session) => setActiveSession(session)}
+              onJoinSession={(session) => {
+                 setActiveSession(session);
+                 setViewMode('generator');
+              }}
               onStartSessionRequest={() => {
                   setPresetToStart({
                     id: crypto.randomUUID(),
@@ -481,10 +477,7 @@ const App: React.FC = () => {
             />
            </div>
         )}
-
-           </>
-        )}
-
+        </>
       </div>
 
       {/* --- Global Player --- */}
@@ -492,12 +485,17 @@ const App: React.FC = () => {
 
       {/* --- Live Sync Call Overlay --- */}
       {activeSession && (
-         <div className="fixed bottom-4 right-4 z-50 w-96 max-h-[80vh] flex flex-col pointer-events-none">
+         <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-96 md:w-[400px] max-h-[80vh] flex flex-col pointer-events-none">
             <div className="pointer-events-auto shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-black/80 backdrop-blur-md">
                <LiveSyncCall 
                   session={activeSession} 
                   currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
-                  onLeave={() => setActiveSession(null)} 
+                  onLeave={() => {
+                      setActiveSession(null);
+                      // Don't switch viewMode here, just close the overlay
+                  }} 
+                  currentOscillators={audio.oscillators}
+                  onSyncReceive={audio.setAllOscillators}
                />
             </div>
          </div>

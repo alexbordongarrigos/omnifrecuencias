@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { meshNetwork, MeshNode, MeshConnectionState } from '../services/meshNetwork';
 
-export const useMeshSync = () => {
+export const useMeshSync = (onDataReceive?: (data: any) => void) => {
   const [nodes, setNodes] = useState<MeshNode[]>([]);
   const [connectionState, setConnectionState] = useState<MeshConnectionState>(meshNetwork.state);
   const [latencyDelta, setLatencyDelta] = useState<number>(0);
 
   useEffect(() => {
+    let unsubData: (() => void) | undefined;
+    if (onDataReceive) {
+      unsubData = meshNetwork.onDataReceive(onDataReceive);
+    }
     const unsubNodes = meshNetwork.onNodesUpdate((updatedNodes) => {
       setNodes(updatedNodes);
       
@@ -35,8 +39,9 @@ export const useMeshSync = () => {
     return () => {
       unsubNodes();
       unsubState();
+      if (unsubData) unsubData();
     };
-  }, []);
+  }, [onDataReceive]);
 
   const connectToMesh = async () => {
     await meshNetwork.connect();
@@ -56,12 +61,17 @@ export const useMeshSync = () => {
     });
   };
 
+  const broadcastData = async (data: any) => {
+    await meshNetwork.broadcastData(data);
+  };
+
   return {
     nodes,
     connectionState,
     latencyDelta,
     connectToMesh,
     disconnectFromMesh,
-    injectMockNode
+    injectMockNode,
+    broadcastData
   };
 };

@@ -7,7 +7,13 @@ export interface RemoteStream {
   displayName: string;
 }
 
-export const useWebRTC = (sessionId: string, currentUserId: string, displayName: string, enabled: boolean = true) => {
+export const useWebRTC = (
+  sessionId: string, 
+  currentUserId: string, 
+  displayName: string, 
+  enabled: boolean = true,
+  onSyncReceive?: (oscillators: any[]) => void
+) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
@@ -81,6 +87,11 @@ export const useWebRTC = (sessionId: string, currentUserId: string, displayName:
           }
         } catch (err) {
           console.error("WebRTC Error handling signal:", err);
+        }
+      })
+      .on('broadcast', { event: 'oscillator_sync' }, ({ payload }) => {
+        if (payload.sender !== currentUserId && onSyncReceive) {
+          onSyncReceive(payload.oscillators);
         }
       })
       .subscribe(async (status) => {
@@ -221,21 +232,25 @@ export const useWebRTC = (sessionId: string, currentUserId: string, displayName:
   }, [channelRef.current]);
 
   const sendChatMessage = (text: string) => {
-    const msg = {
-      id: crypto.randomUUID(),
-      senderId: currentUserId,
-      senderName: displayName,
-      text,
-      timestamp: Date.now()
-    };
-    
-    // Optimistic UI
-    setChatMessages(prev => [...prev, msg]);
-    
-    channelRef.current?.send({
+    if (!channelRef.current) return;
+    const msg = { senderId: currentUserId, senderName: displayName, text, timestamp: Date.now() };
+    channelRef.current.send({
       type: 'broadcast',
       event: 'chat_message',
       payload: msg
+    });
+    setChatMessages(prev => [...prev, msg]);
+  };
+
+  const broadcastOscillatorSync = (oscillators: any[]) => {
+    if (!channelRef.current) return;
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'oscillator_sync',
+      payload: {
+        sender: currentUserId,
+        oscillators
+      }
     });
   };
 
@@ -248,6 +263,7 @@ export const useWebRTC = (sessionId: string, currentUserId: string, displayName:
     toggleVideo,
     toggleAudio,
     chatMessages,
-    sendChatMessage
+    sendChatMessage,
+    broadcastOscillatorSync
   };
 };
