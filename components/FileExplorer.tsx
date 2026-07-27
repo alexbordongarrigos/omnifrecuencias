@@ -72,9 +72,9 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
             </div>
             <div>
                 <h2 className="text-2xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                    {mode === 'save' ? 'Guardar Preset' : 'Cargar Preset'}
+                    {mode === 'save' ? 'Guardar Partícula' : 'Cargar Partícula'}
                 </h2>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-200/60 mt-1">Sistema de Archivos Holográfico</p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-200/60 mt-1">Sistema Cuántico de Partículas</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white">

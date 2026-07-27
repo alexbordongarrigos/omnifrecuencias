@@ -8,7 +8,8 @@ import {
   fetchLiveSessions,
   StarseedUser 
 } from '../services/starseedAuth';
-import { FileSystemNode, LiveSession, CATEGORIES } from '../types';
+import { fetchCommunityProfiles, checkResonance, resonateWithUser, unresonateWithUser } from '../services/omniCommunity';
+import { FileSystemNode, LiveSession, CATEGORIES, OmniProfile } from '../types';
 
 interface Props {
   onLoadPreset: (node: FileSystemNode) => void;
@@ -20,10 +21,12 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
   const [loading, setLoading] = useState(true);
   const [presets, setPresets] = useState<FileSystemNode[]>([]);
   const [sessions, setSessions] = useState<LiveSession[]>([]);
+  const [profiles, setProfiles] = useState<OmniProfile[]>([]);
+  const [resonancesCache, setResonancesCache] = useState<Record<string, boolean>>({});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion'>('vibras');
+  const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
 
   useEffect(() => {
@@ -40,12 +43,24 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
 
   const loadData = async () => {
     try {
-      const [presetsData, sessionsData] = await Promise.all([
+      const [presetsData, sessionsData, profilesData] = await Promise.all([
         fetchCommunityPresets(),
-        fetchLiveSessions()
+        fetchLiveSessions(),
+        fetchCommunityProfiles()
       ]);
       setPresets(presetsData);
       setSessions(sessionsData);
+      setProfiles(profilesData);
+      
+      // Load resonance states if user logged in
+      const currentUser = await getCurrentStarseedUser();
+      if (currentUser) {
+        const cache: Record<string, boolean> = {};
+        for (const p of profilesData) {
+          cache[p.id] = await checkResonance(currentUser.id, p.id);
+        }
+        setResonancesCache(cache);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -170,13 +185,19 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
           className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'vibras' ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
           onClick={() => setActiveTab('vibras')}
         >
-          <Icon name="Library" size={18} /> Vibras (Presets)
+          <Icon name="Library" size={18} /> Partículas (Vibras)
         </button>
         <button
           className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'entonacion' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'}`}
           onClick={() => setActiveTab('entonacion')}
         >
-          <Icon name="Radio" size={18} /> Entonación (En Vivo)
+          <Icon name="Radio" size={18} /> Sincronización (En Vivo)
+        </button>
+        <button
+          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'perfiles' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
+          onClick={() => setActiveTab('perfiles')}
+        >
+          <Icon name="Users" size={18} /> Perfiles
         </button>
       </div>
 
@@ -184,11 +205,11 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold flex items-center gap-2 text-cyan-300">
-              <Icon name="Globe" size={24} /> Librería Comunitaria
+              <Icon name="Globe" size={24} /> Librería de Partículas
             </h2>
             <div className="flex gap-2">
               <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-                <Icon name="Upload" size={14} /> Publicar Preset
+                <Icon name="Upload" size={14} /> Publicar Partícula
               </button>
               <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
                 <Icon name="RefreshCw" size={18} />
@@ -267,11 +288,11 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold flex items-center gap-2 text-purple-300">
-              <Icon name="Radio" size={24} /> Sesiones en Vivo
+              <Icon name="Radio" size={24} /> Sincronizaciones Cuánticas
             </h2>
             <div className="flex gap-2">
                <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-                <Icon name="Radio" size={14} /> Transmitir
+                <Icon name="Radio" size={14} /> Transmitir Vibras
               </button>
               <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
                 <Icon name="RefreshCw" size={18} />
@@ -295,7 +316,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
                    <p className="text-sm text-slate-400 mb-4">Host: <span className="text-purple-300 font-bold">{session.hostName}</span></p>
                    
                    <div className="flex items-center gap-4 text-[10px] text-slate-500 mb-6">
-                     <span className="flex items-center gap-1"><Icon name="Users" size={12}/> Público</span>
+                     <span className="flex items-center gap-1"><Icon name="Users" size={12}/> {session.participantsCount || 0} Conectados</span>
                      <span className="flex items-center gap-1"><Icon name="Settings" size={12}/> {session.allowOpenModifications ? 'Abierto' : 'Sólo Host'}</span>
                    </div>
 
@@ -303,7 +324,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
                      onClick={() => onJoinSession(session)}
                      className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] flex items-center justify-center gap-2"
                    >
-                     <Icon name="Headphones" size={16} /> Unirse a la Sesión
+                     <Icon name="Headphones" size={16} /> Sincronizar
                    </button>
                  </div>
                </div>
@@ -312,10 +333,93 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
              {sessions.length === 0 && (
                <div className="col-span-full py-16 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl">
                  <Icon name="MicOff" size={32} className="mx-auto mb-3 opacity-40" />
-                 <p className="mb-1 text-white/70">No hay sesiones públicas activas.</p>
-                 <p className="text-xs">Inicia una sesión desde tus presets locales compartiendo como "Sesión Pública".</p>
+                 <p className="mb-1 text-white/70">No hay sincronizaciones activas.</p>
+                 <p className="text-xs">Inicia una sesión local y transmite al universo cuántico.</p>
                </div>
              )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'perfiles' && (
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
+              <Icon name="Users" size={24} /> Exploradores Cuánticos
+            </h2>
+            <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
+              <Icon name="RefreshCw" size={18} />
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {profiles.map(p => (
+              <div key={p.id} className="bg-black/60 border border-white/10 rounded-2xl overflow-hidden relative group hover:border-amber-500/50 transition-colors">
+                {/* Cover Image or fallback */}
+                <div className="h-20 bg-gradient-to-br from-slate-900 to-black relative">
+                  {p.cover_url && <img src={p.cover_url} className="w-full h-full object-cover opacity-60 mix-blend-screen" alt="Cover" />}
+                  {p.status === 'online' && (
+                    <span className="absolute top-2 right-2 bg-green-500/20 text-green-400 border border-green-500/50 px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span> Activo
+                    </span>
+                  )}
+                </div>
+                
+                <div className="p-4 pt-0 relative">
+                  {/* Avatar */}
+                  <div className="w-16 h-16 rounded-full border-4 border-black bg-gradient-to-tr from-cyan-500 to-amber-500 -mt-8 mb-2 flex items-center justify-center font-bold text-xl overflow-hidden">
+                    {p.avatar_url ? (
+                      <img src={p.avatar_url} className="w-full h-full object-cover" alt="Avatar" />
+                    ) : (
+                      p.displayName.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  
+                  <h3 className="font-bold text-white mb-1">{p.displayName}</h3>
+                  
+                  <div className="flex gap-4 text-xs text-slate-400 mb-4">
+                    <span className="flex items-center gap-1">
+                      <Icon name="Activity" size={12} className="text-cyan-400" /> {p.particlesCount} Partículas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon name="Radio" size={12} className="text-amber-400" /> {p.resonancesCount} Resonancias
+                    </span>
+                  </div>
+                  
+                  {user && user.id !== p.id && (
+                    <button 
+                      onClick={() => handleProtectedAction(async () => {
+                        try {
+                          if (resonancesCache[p.id]) {
+                            await unresonateWithUser(user.id, p.id);
+                            setResonancesCache(prev => ({...prev, [p.id]: false}));
+                          } else {
+                            await resonateWithUser(user.id, p.id);
+                            setResonancesCache(prev => ({...prev, [p.id]: true}));
+                          }
+                          // Refresh counts
+                          loadData();
+                        } catch(e) {
+                          console.error(e);
+                        }
+                      })}
+                      className={`w-full py-2 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 ${
+                        resonancesCache[p.id] 
+                        ? 'bg-white/10 text-slate-300 hover:bg-red-500/20 hover:text-red-400'
+                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500 hover:text-black'
+                      }`}
+                    >
+                      <Icon name="Radio" size={16} /> {resonancesCache[p.id] ? 'Dejar de Resonar' : 'Resonar'}
+                    </button>
+                  )}
+                  {(!user || user.id === p.id) && (
+                    <div className="w-full py-2 text-center text-xs text-slate-500">
+                      {user?.id === p.id ? 'Este es tu avatar cuántico' : 'Inicia sesión para resonar'}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

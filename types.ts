@@ -205,7 +205,9 @@ export interface FileSystemNode {
 export interface SessionParticipant {
   id: string; // User ID
   displayName: string;
+  avatar_url?: string;
   isMuted: boolean;
+  isVideoEnabled: boolean;
   joinedAt: number;
 }
 
@@ -225,6 +227,27 @@ export interface LiveSession {
   presetContent: PresetContent; // The currently playing preset
   isPublic: boolean;
   allowOpenModifications: boolean; // Anyone can change settings?
+  createdAt: number;
+  participantsCount?: number; // Added for UI
+}
+
+// --- Community Profiles & Resonances ---
+
+export interface OmniProfile {
+  id: string;
+  displayName: string;
+  avatar_url?: string;
+  cover_url?: string;
+  status: 'online' | 'offline';
+  lastActive: number;
+  resonancesCount: number; // Followers
+  particlesCount: number; // Public presets
+}
+
+export interface OmniResonance {
+  id: string;
+  followerId: string;
+  followingId: string;
   createdAt: number;
 }
 

@@ -1,6 +1,7 @@
 
 import { useRef, useState, useEffect } from 'react';
 import { OscillatorState, WaveType } from '../types';
+import { meshNetwork } from '../services/meshNetwork';
 
 interface AudioNodeRefs {
   osc1: OscillatorNode;
@@ -67,6 +68,36 @@ export const useAudio = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [oscillators, setOscillators] = useState<OscillatorState[]>([]);
   const [masterVolume, setMasterVolume] = useState(1.0);
+  const [meshLatency, setMeshLatency] = useState(0);
+
+  useEffect(() => {
+    const unsub = meshNetwork.onNodesUpdate((nodes) => {
+      if (nodes.length > 0) {
+        const bestNode = nodes.reduce((prev, current) => (current.snr || -100) > (prev.snr || -100) ? current : prev);
+        const baseLatency = 0.020; // 20ms in seconds
+        const jitter = (0.010 / Math.max(bestNode.snr || 1, 1));
+        setMeshLatency(baseLatency + jitter);
+      } else {
+        setMeshLatency(0);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Update existing delays when mesh latency changes
+  useEffect(() => {
+    if (audioCtxRef.current) {
+      const ctx = audioCtxRef.current;
+      nodesRef.current.forEach((nodes, id) => {
+        const oscState = oscillators.find(o => o.id === id);
+        if (oscState) {
+          const phaseDeg = oscState.phaseOffset || 0;
+          const baseDelayTime = phaseDeg > 0 ? (phaseDeg / 360) / Math.max(0.1, oscState.frequency) : 0;
+          nodes.delay.delayTime.setTargetAtTime(baseDelayTime + meshLatency, ctx.currentTime, 0.05);
+        }
+      });
+    }
+  }, [meshLatency, oscillators]);
 
   // Initialize Audio Context
   const initAudio = () => {
@@ -259,11 +290,11 @@ export const useAudio = () => {
     // Gentle roll-off before Nyquist frequency to ensure wave purity
     aaFilter.frequency.value = Math.min(18000, ctx.sampleRate / 2.2);
 
-    // DelayNode for Angular Phase Shift (0° to 360°)
-    const delay = ctx.createDelay(1.0);
+    // DelayNode for Angular Phase Shift + Mesh Latency offset
+    const delay = ctx.createDelay(2.0); // max 2 seconds
     const phaseDeg = oscState.phaseOffset || 0;
-    const delayTime = phaseDeg > 0 ? (phaseDeg / 360) / Math.max(0.1, oscState.frequency) : 0;
-    delay.delayTime.setValueAtTime(delayTime, ctx.currentTime);
+    const baseDelayTime = phaseDeg > 0 ? (phaseDeg / 360) / Math.max(0.1, oscState.frequency) : 0;
+    delay.delayTime.setValueAtTime(baseDelayTime + meshLatency, ctx.currentTime);
 
     // PannerNode: Equal Power for Hard Panning capability
     const panner = ctx.createPanner();
