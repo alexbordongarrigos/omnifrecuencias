@@ -200,12 +200,17 @@ export const exportPresetToOSLibrary = async (node: FileSystemNode, userId: stri
   return dbData;
 };
 
-export const importPresetsFromOSLibrary = async (userId: string): Promise<FileSystemNode[]> => {
+export interface OSImportedPreset {
+  pathSegments: string[];
+  name: string;
+  content: PresetContent;
+}
+
+export const importPresetsFromOSLibrary = async (userId: string): Promise<OSImportedPreset[]> => {
   const { data, error } = await supabase
     .from('os_files')
     .select('*')
     .eq('owner', userId)
-    .like('path', '%omnifrecuencias_presets/%')
     .eq('mime', 'application/json');
 
   if (error) {
@@ -213,7 +218,7 @@ export const importPresetsFromOSLibrary = async (userId: string): Promise<FileSy
     return [];
   }
 
-  const nodes: FileSystemNode[] = [];
+  const importedPresets: OSImportedPreset[] = [];
   
   for (const item of data) {
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -227,21 +232,32 @@ export const importPresetsFromOSLibrary = async (userId: string): Promise<FileSy
 
     try {
       const text = await fileData.text();
-      const content = JSON.parse(text) as PresetContent;
-      nodes.push({
-        id: item.id,
-        parentId: 'os_library_presets',
-        name: item.name.replace('.json', ''),
-        type: 'file',
-        content,
-        createdAt: new Date(item.created_at).getTime()
-      });
+      const content = JSON.parse(text) as Partial<PresetContent>;
+      
+      // Validar inteligentemente si el JSON es un preset compatible de Omni-Frecuencias
+      if (content && Array.isArray(content.frequencies)) {
+        
+        // Extraer estructura de carpetas de la ruta original del OS
+        // Rutas comunes: {userId}/carpeta1/carpeta2/archivo.json
+        const pathParts = item.path.split('/');
+        // Remover userId (inicio) y nombre de archivo (fin)
+        let folders = pathParts.slice(1, -1);
+        
+        // Si no está en ninguna carpeta, asignarlo a "Biblioteca OS"
+        if (folders.length === 0) folders = ['Biblioteca OS'];
+        
+        importedPresets.push({
+          pathSegments: folders,
+          name: item.name.replace('.json', ''),
+          content: content as PresetContent
+        });
+      }
     } catch (e) {
-      console.error("Failed to parse JSON for", item.name);
+      // Silenciosamente ignorar archivos JSON que no sean presets válidos
     }
   }
 
-  return nodes;
+  return importedPresets;
 };
 
 export const deleteLiveSession = async (sessionId: string) => {
