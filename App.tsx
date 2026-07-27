@@ -452,9 +452,9 @@ const App: React.FC = () => {
         {viewMode === 'online' && (
            <div className="h-[80vh]">
             <OnlineLibrary 
+              currentOscillators={audio.oscillators}
               onLoadPreset={(node) => {
                  if (node.content) {
-                     // TODO: Add support for complex presets
                      // Just adding the oscillators for now
                      node.content.oscillators.forEach(osc => {
                          audio.addOscillator(osc);
@@ -463,6 +463,14 @@ const App: React.FC = () => {
                  }
               }}
               onJoinSession={(session) => setActiveSession(session)}
+              onStartSessionRequest={() => {
+                  setPresetToStart({
+                    id: crypto.randomUUID(),
+                    name: 'Sincronización en Vivo',
+                    content: { oscillators: audio.oscillators }
+                  } as any);
+                  setShowStartSessionModal(true);
+              }}
             />
            </div>
         )}

@@ -47,8 +47,7 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave }) => {
     toggleAudio,
     chatMessages,
     sendChatMessage
-    sendChatMessage
-  } = useWebRTC(session.id, currentUser.id, currentUser.displayName);
+  } = useWebRTC(session.id, currentUser.id, currentUser.displayName, session.useGlobalWebRTC !== false);
 
   const {
     nodes: meshNodes,

@@ -13,6 +13,8 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
   const [presetName, setPresetName] = useState('Sesión de Entonación');
   const [isPublic, setIsPublic] = useState(true);
   const [allowOpenModifications, setAllowOpenModifications] = useState(false);
+  const [useGlobalWebRTC, setUseGlobalWebRTC] = useState(true);
+  const [useLocalMesh, setUseLocalMesh] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,19 +24,41 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
     setError('');
     try {
       const user = await getCurrentStarseedUser();
-      if (!user) {
-        throw new Error("Debes iniciar sesión con Starseed OS para transmitir en vivo.");
+      if (!user && useGlobalWebRTC) {
+        throw new Error("Debes iniciar sesión con Starseed OS para transmitir en la red global.");
       }
       
-      const session = await createLiveSession(
-        preset,
-        user.id,
-        user.displayName,
-        presetName,
-        isPublic,
-        allowOpenModifications
-      );
-      onSessionStarted(session);
+      if (!useGlobalWebRTC && !useLocalMesh) {
+         throw new Error("Debes seleccionar al menos un modo de transmisión (Global o Mesh Local).");
+      }
+      
+      let session = null;
+      
+      // If Global WebRTC is enabled, create session in Supabase DB
+      if (useGlobalWebRTC && user) {
+          session = await createLiveSession(
+            preset,
+            user.id,
+            user.displayName,
+            presetName,
+            isPublic,
+            allowOpenModifications
+          );
+      } else {
+          // Off-grid mode / Mesh only. Create a local mock session object.
+          session = {
+              id: crypto.randomUUID(),
+              presetName: presetName,
+              hostId: user ? user.id : 'local-host',
+              hostName: user ? user.displayName : 'Explorador Mesh',
+              presetContent: preset,
+              isPublic: false,
+              allowOpenModifications: allowOpenModifications,
+              createdAt: new Date().toISOString()
+          };
+      }
+      
+      onSessionStarted({ ...session, useGlobalWebRTC, useLocalMesh });
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión.");
     }
@@ -96,6 +120,50 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
               <span className="block text-sm font-bold text-white">Modificaciones Abiertas</span>
               <span className="block text-xs text-slate-400">Permitir a los participantes modificar los parámetros de las frecuencias.</span>
             </label>
+          </div>
+
+          <div className="pt-2 border-t border-white/10 mt-4">
+             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Topología de Red</label>
+              
+              <div className="space-y-3">
+                {/* Global WebRTC Option */}
+                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${useGlobalWebRTC ? 'border-cyan-500/50 bg-cyan-500/5' : 'border-white/10 bg-black/30 hover:border-white/20'}`}>
+                  <div className="mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      checked={useGlobalWebRTC}
+                      onChange={(e) => setUseGlobalWebRTC(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-800"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm text-white flex items-center gap-2">
+                      <Icon name="Globe" size={14} className={useGlobalWebRTC ? 'text-cyan-400' : 'text-slate-500'} />
+                      Red Global (Internet)
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">Sincronización mundial por WebRTC a través de Starseed OS.</div>
+                  </div>
+                </label>
+
+                {/* Local Mesh Option */}
+                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${useLocalMesh ? 'border-green-500/50 bg-green-500/5' : 'border-white/10 bg-black/30 hover:border-white/20'}`}>
+                  <div className="mt-0.5">
+                    <input 
+                      type="checkbox" 
+                      checked={useLocalMesh}
+                      onChange={(e) => setUseLocalMesh(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-sm text-white flex items-center gap-2">
+                      <Icon name="RadioReceiver" size={14} className={useLocalMesh ? 'text-green-400' : 'text-slate-500'} />
+                      Mesh P2P Local (Radio)
+                    </div>
+                    <div className="text-xs text-slate-400 mt-1">Conecta tu antena para sincronización ultrabaja off-grid.</div>
+                  </div>
+                </label>
+              </div>
           </div>
 
           {error && <p className="text-red-400 text-sm font-bold">{error}</p>}

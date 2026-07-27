@@ -7,7 +7,7 @@ export interface RemoteStream {
   displayName: string;
 }
 
-export const useWebRTC = (sessionId: string, currentUserId: string, displayName: string) => {
+export const useWebRTC = (sessionId: string, currentUserId: string, displayName: string, enabled: boolean = true) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
@@ -19,7 +19,7 @@ export const useWebRTC = (sessionId: string, currentUserId: string, displayName:
 
   // Initialize Channel & WebRTC
   useEffect(() => {
-    if (!sessionId || !currentUserId) return;
+    if (!enabled || !sessionId || !currentUserId) return;
 
     const channel = supabase.channel(`sync_room_${sessionId}`, {
       config: { broadcast: { self: false }, presence: { key: currentUserId } }

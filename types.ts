@@ -229,6 +229,8 @@ export interface LiveSession {
   allowOpenModifications: boolean; // Anyone can change settings?
   createdAt: number;
   participantsCount?: number; // Added for UI
+  useGlobalWebRTC?: boolean;
+  useLocalMesh?: boolean;
 }
 
 // --- Community Profiles & Resonances ---

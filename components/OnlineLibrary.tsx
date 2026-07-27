@@ -9,14 +9,17 @@ import {
   StarseedUser 
 } from '../services/starseedAuth';
 import { fetchCommunityProfiles, checkResonance, resonateWithUser, unresonateWithUser } from '../services/omniCommunity';
-import { FileSystemNode, LiveSession, CATEGORIES, OmniProfile } from '../types';
+import { FileSystemNode, LiveSession, CATEGORIES, OmniProfile, OscillatorState } from '../types';
+import PublishParticleModal from './PublishParticleModal';
 
 interface Props {
   onLoadPreset: (node: FileSystemNode) => void;
   onJoinSession: (session: LiveSession) => void;
+  currentOscillators?: OscillatorState[];
+  onStartSessionRequest?: () => void;
 }
 
-const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
+const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOscillators = [], onStartSessionRequest }) => {
   const [user, setUser] = useState<StarseedUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [presets, setPresets] = useState<FileSystemNode[]>([]);
@@ -28,6 +31,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showPublishModal, setShowPublishModal] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -208,7 +212,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
               <Icon name="Globe" size={24} /> Librería de Partículas
             </h2>
             <div className="flex gap-2">
-              <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+              <button onClick={() => handleProtectedAction(() => setShowPublishModal(true))} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                 <Icon name="Upload" size={14} /> Publicar Partícula
               </button>
               <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
@@ -291,7 +295,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
               <Icon name="Radio" size={24} /> Sincronizaciones Cuánticas
             </h2>
             <div className="flex gap-2">
-               <button onClick={() => handleProtectedAction(() => {})} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
+               <button onClick={() => handleProtectedAction(() => { if (onStartSessionRequest) onStartSessionRequest(); })} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                 <Icon name="Radio" size={14} /> Transmitir Vibras
               </button>
               <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
@@ -422,6 +426,17 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
             ))}
           </div>
         </div>
+      )}
+
+      {showPublishModal && user && (
+        <PublishParticleModal
+          onClose={() => {
+            setShowPublishModal(false);
+            loadData(); // recargar para ver la nueva partícula
+          }}
+          oscillators={currentOscillators}
+          user={user}
+        />
       )}
     </div>
   );
