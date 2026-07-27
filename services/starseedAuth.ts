@@ -3,8 +3,8 @@ import { PresetContent, FileSystemNode } from '../types';
 
 // These should ideally be environment variables, but for the integration with Starseed OS
 // we will assume a global config or provide mock URLs if missing.
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mock.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-key';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://nxstilnyidvkqeosofuh.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54c3RpbG55aWR2a3Flb3NvZnVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMzUyMjEsImV4cCI6MjA5NzgxMTIyMX0.noFtrsYFbECzbKyJQH-X9oXPEjL6s-0xL4H-rygIWWI';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 

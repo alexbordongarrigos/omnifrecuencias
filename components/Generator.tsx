@@ -342,10 +342,10 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                 </div>
 
                 {/* 2D / 3D Cymatics Selector Tabs */}
-                <div className="flex items-center gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-fit">
+                <div className="flex flex-wrap items-center gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-full lg:w-fit">
                   <button
                     onClick={() => setVizTab('2d')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                       vizTab === '2d'
                         ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
                         : 'text-slate-500 hover:text-white'
@@ -355,7 +355,7 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                   </button>
                   <button
                     onClick={() => setVizTab('3d')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                       vizTab === '3d'
                         ? 'bg-purple-950/60 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
                         : 'text-slate-500 hover:text-white'
@@ -365,7 +365,7 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                   </button>
                   <button
                     onClick={() => setVizTab('spiral')}
-                    className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    className={`flex-1 min-w-[140px] lg:flex-none flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
                       vizTab === 'spiral'
                         ? 'bg-pink-950/60 text-pink-300 border border-pink-500/40 shadow-[0_0_15px_rgba(236,72,153,0.3)]'
                         : 'text-slate-500 hover:text-white'
