@@ -11,8 +11,10 @@ import LandingPage from './components/LandingPage';
 import OnlineLibrary from './components/OnlineLibrary';
 import LiveSessionView from './components/LiveSessionView';
 import StartLiveSessionModal from './components/StartLiveSessionModal';
+import LiveSyncCall from './components/LiveSyncCall';
 import Introduction from './components/Introduction';
 import { LiveSession, PresetContent } from './types';
+import { getCurrentStarseedUser, StarseedUser } from './services/starseedAuth';
 
 type ViewMode = 'intro' | 'library' | 'generator' | 'online';
 
@@ -131,9 +133,14 @@ const App: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('intro');
   const [activeSession, setActiveSession] = useState<LiveSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<StarseedUser | null>(null);
   
   const [showStartSessionModal, setShowStartSessionModal] = useState(false);
   const [presetToStart, setPresetToStart] = useState<PresetContent | null>(null);
+
+  React.useEffect(() => {
+    getCurrentStarseedUser().then(user => setCurrentUser(user));
+  }, []);
 
   // Audio Engine Hook
   const audio = useAudio();
@@ -483,6 +490,19 @@ const App: React.FC = () => {
       {/* --- Global Player --- */}
       <GlobalPlayer audio={audio} />
 
+      {/* --- Live Sync Call Overlay --- */}
+      {activeSession && (
+         <div className="fixed bottom-4 right-4 z-50 w-96 max-h-[80vh] flex flex-col pointer-events-none">
+            <div className="pointer-events-auto shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-black/80 backdrop-blur-md">
+               <LiveSyncCall 
+                  session={activeSession} 
+                  currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
+                  onLeave={() => setActiveSession(null)} 
+               />
+            </div>
+         </div>
+      )}
+
       {/* --- Modals --- */}
       {showStartSessionModal && presetToStart && (
          <StartLiveSessionModal 
@@ -495,7 +515,7 @@ const App: React.FC = () => {
                 setShowStartSessionModal(false);
                 setPresetToStart(null);
                 setActiveSession(session);
-                // switch to online mode to view the session? Not strictly needed since activeSession overrides
+                setViewMode('generator');
             }}
          />
       )}

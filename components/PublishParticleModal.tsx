@@ -1,8 +1,24 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/starseedAuth';
 import Icon from './Icon';
-import { OscillatorState } from '../types';
+import { OscillatorState, FileSystemNode } from '../types';
 import { StarseedUser } from '../services/starseedAuth';
+
+const STORAGE_KEY = 'omni_holographic_fs_v1';
+
+// Recursive helper to find all files in the file system tree
+const getAllFiles = (node: FileSystemNode): FileSystemNode[] => {
+  let files: FileSystemNode[] = [];
+  if (node.type === 'file') {
+    files.push(node);
+  }
+  if (node.children) {
+    node.children.forEach(child => {
+      files = files.concat(getAllFiles(child));
+    });
+  }
+  return files;
+};
 
 interface Props {
   onClose: () => void;
@@ -13,8 +29,27 @@ interface Props {
 const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [sourceMode, setSourceMode] = useState<'current' | 'library'>('current');
+  const [libraryFiles, setLibraryFiles] = useState<FileSystemNode[]>([]);
+  const [selectedFileId, setSelectedFileId] = useState<string>('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const parsed: FileSystemNode = JSON.parse(saved);
+        const files = getAllFiles(parsed);
+        setLibraryFiles(files);
+        if (files.length > 0) {
+          setSelectedFileId(files[0].id);
+        }
+      } catch (e) {
+        console.error("Failed to parse library files", e);
+      }
+    }
+  }, []);
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,8 +57,19 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
       setError("El título es obligatorio");
       return;
     }
-    if (oscillators.length === 0) {
-      setError("No hay frecuencias activas para publicar.");
+    let dataToPublish = oscillators;
+
+    if (sourceMode === 'library') {
+      const selectedFile = libraryFiles.find(f => f.id === selectedFileId);
+      if (!selectedFile || !selectedFile.content || !selectedFile.content.oscillators) {
+        setError("El archivo seleccionado no es válido o está vacío.");
+        return;
+      }
+      dataToPublish = selectedFile.content.oscillators;
+    }
+
+    if (dataToPublish.length === 0) {
+      setError("No hay frecuencias para publicar.");
       return;
     }
 
@@ -35,8 +81,8 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
         title: title.trim(),
         description: description.trim(),
         author_id: user.id,
-        author_name: user.displayName,
-        data: oscillators,
+        // Removed author_name to fix schema cache error
+        data: dataToPublish,
         tags: ['omni', 'frecuencias']
       };
 
@@ -80,7 +126,44 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
             </div>
           )}
 
+          <div className="flex gap-2 p-1 bg-black/50 border border-white/10 rounded-xl mb-6">
+            <button
+              type="button"
+              onClick={() => setSourceMode('current')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${sourceMode === 'current' ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:bg-white/5'}`}
+            >
+              Frecuencias Actuales
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceMode('library')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-colors ${sourceMode === 'library' ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:bg-white/5'}`}
+            >
+              Desde mi Biblioteca
+            </button>
+          </div>
+
           <div className="space-y-4">
+            {sourceMode === 'library' && (
+              <div>
+                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Seleccionar Archivo</label>
+                 {libraryFiles.length > 0 ? (
+                    <select
+                      value={selectedFileId}
+                      onChange={e => setSelectedFileId(e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-purple-500/50 transition-colors"
+                    >
+                      {libraryFiles.map(file => (
+                        <option key={file.id} value={file.id}>{file.name}</option>
+                      ))}
+                    </select>
+                 ) : (
+                    <div className="text-sm text-amber-400 bg-amber-500/10 p-3 rounded-xl border border-amber-500/20">
+                      No tienes archivos guardados en tu biblioteca local.
+                    </div>
+                 )}
+              </div>
+            )}
             <div>
               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Título de la Partícula</label>
               <input
