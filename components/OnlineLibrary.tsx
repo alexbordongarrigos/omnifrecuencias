@@ -78,40 +78,11 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
 
   const handleProtectedAction = (action: () => void) => {
     if (!user) {
-      // Show login modal or alert
-      alert('Debes iniciar sesión con tu cuenta Starseed OS para realizar esta acción.');
+      setError('force_login');
       return;
     }
     action();
   };
-
-  const LoginModal = () => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-black/80 border border-white/10 p-8 rounded-3xl backdrop-blur-xl w-full max-w-md shadow-[0_0_50px_rgba(245,158,11,0.2)]">
-        <div className="flex justify-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
-             <img src="/starseed-symbol.png" alt="Starseed OS" className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
-          </div>
-        </div>
-        <h2 className="text-2xl font-black text-white text-center mb-2">Starseed OS</h2>
-        <p className="text-sm text-slate-400 text-center mb-8">Inicia sesión con tu cuenta universal para publicar, transmitir y sincronizar tus presets.</p>
-        
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <input type="email" placeholder="Correo electrónico" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={email} onChange={e => setEmail(e.target.value)} />
-          </div>
-          <div>
-            <input type="password" placeholder="Contraseña" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={password} onChange={e => setPassword(e.target.value)} />
-          </div>
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <div className="flex gap-3">
-             <button type="button" onClick={() => setError('login_cancelled')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">Cancelar</button>
-             <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">Conectar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 
   const filteredPresets = selectedCategory === 'all' ? presets : presets.filter(p => p.content?.category === selectedCategory);
 
@@ -120,15 +91,24 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
       {/* Conditionally render login modal if user clicked something requiring auth and is not logged in, or if explicitly opened. For now we use the error state hack to open it or we can just render it. Let's use a state `showLoginModal`. */}
       {/* Wait, we don't have showLoginModal state, let's just render the Login form inline if they want to login via header. */}
       
-      <div className="flex justify-between items-center mb-6 bg-black/30 border border-white/5 p-4 rounded-2xl backdrop-blur-md shrink-0">
+      <div className="relative flex justify-between items-center mb-6 border border-white/5 p-4 rounded-2xl backdrop-blur-md shrink-0 overflow-hidden">
+        {user?.cover_url && (
+           <img src={user.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none mix-blend-screen" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-black/30 pointer-events-none" />
+        
         {user ? (
           <>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500 to-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-                {user.displayName.charAt(0)}
-              </div>
+            <div className="flex items-center gap-4 relative z-10">
+              {user.avatar_url ? (
+                <img src={user.avatar_url} alt={user.displayName} className="w-14 h-14 rounded-full border-2 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.5)] object-cover" />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-cyan-500 to-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.5)]">
+                  {user.displayName.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div>
-                <h3 className="font-bold text-white">{user.displayName}</h3>
+                <h3 className="font-bold text-white text-lg">{user.displayName}</h3>
                 <p className="text-xs text-amber-400 font-bold">Conectado a Starseed OS</p>
               </div>
             </div>
@@ -157,7 +137,33 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession }) => {
         )}
       </div>
 
-      {(!user && error === 'force_login') && <LoginModal />}
+      {(!user && error === 'force_login') && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-black/80 border border-white/10 p-8 rounded-3xl backdrop-blur-xl w-full max-w-md shadow-[0_0_50px_rgba(245,158,11,0.2)]">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-amber-950/30 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+                 <img src="/starseed-symbol.png" alt="Starseed OS" className="w-8 h-8 object-contain drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-black text-white text-center mb-2">Starseed OS</h2>
+            <p className="text-sm text-slate-400 text-center mb-8">Inicia sesión con tu cuenta universal para publicar, transmitir y sincronizar tus presets.</p>
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <input type="email" placeholder="Correo electrónico" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div>
+                <input type="password" placeholder="Contraseña" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={password} onChange={e => setPassword(e.target.value)} />
+              </div>
+              {error && error !== 'force_login' && <p className="text-red-400 text-sm">{error}</p>}
+              <div className="flex gap-3">
+                 <button type="button" onClick={() => setError('')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">Cancelar</button>
+                 <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">Conectar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="flex mb-6 bg-black/50 p-1 rounded-xl border border-white/5 shrink-0">
         <button

@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { FileSystemNode, PresetContent } from '../types';
 import { useFileSystem } from '../hooks/useFileSystem';
 import Icon from './Icon';
-import { publishPresetToCloud, getCurrentStarseedUser } from '../services/starseedAuth';
+import { publishPresetToCloud, getCurrentStarseedUser, exportPresetToOSLibrary, importPresetsFromOSLibrary } from '../services/starseedAuth';
 
 interface Props {
   mode: 'save' | 'load';
@@ -101,6 +101,30 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
 
             {/* Actions */}
            <div className="flex gap-3">
+             <button 
+               onClick={async () => {
+                 const user = await getCurrentStarseedUser();
+                 if (!user) {
+                   alert('Inicia sesión en Starseed OS (Pestaña Comunidad) para importar presets.');
+                   return;
+                 }
+                 try {
+                   const osNodes = await importPresetsFromOSLibrary(user.id);
+                   osNodes.forEach(n => {
+                     if (n.content) fs.saveFile(currentFolderId, n.name, n.content);
+                   });
+                   alert(`Se importaron ${osNodes.length} presets de tu biblioteca Starseed OS a la carpeta actual.`);
+                 } catch (err) {
+                   console.error(err);
+                   alert('Error al importar presets.');
+                 }
+               }}
+               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-950/30 hover:bg-amber-900/50 text-xs font-bold uppercase tracking-wider text-amber-300 border border-amber-500/20 shadow-[inset_0_0_10px_rgba(245,158,11,0.1)] transition-all hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]"
+               title="Sincronizar desde Starseed OS"
+             >
+               <Icon name="DownloadCloud" size={14} />
+               Importar OS
+             </button>
              {!isCreatingFolder && (
                <button 
                  onClick={() => setIsCreatingFolder(true)}
@@ -206,6 +230,29 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
                      
                      {/* Hover Actions */}
                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1 bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/10 shadow-lg">
+                         <button 
+                           onClick={async (e) => {
+                             e.stopPropagation();
+                             if (node.type === 'file' && node.content) {
+                               const user = await getCurrentStarseedUser();
+                               if (!user) {
+                                 alert('Debes iniciar sesión con Starseed OS (Pestaña Comunidad) para usar la nube.');
+                                 return;
+                               }
+                               try {
+                                 await exportPresetToOSLibrary(node, user.id);
+                                 alert('¡Preset guardado en tu Biblioteca de Starseed OS!');
+                               } catch (err) {
+                                 console.error(err);
+                                 alert('Error al exportar a Starseed OS.');
+                               }
+                             }
+                           }}
+                           className={`p-1.5 bg-black/50 hover:bg-amber-500/50 rounded-md text-white backdrop-blur-sm transition-colors ${node.type === 'folder' ? 'hidden' : ''}`}
+                           title="Exportar a la Biblioteca de Starseed OS"
+                        >
+                            <Icon name="Cloud" size={12} />
+                        </button>
                          <button 
                            onClick={async (e) => {
                              e.stopPropagation();

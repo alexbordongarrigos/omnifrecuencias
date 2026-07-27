@@ -12,6 +12,8 @@ export interface StarseedUser {
   id: string;
   email: string;
   displayName: string;
+  avatar_url?: string;
+  cover_url?: string;
 }
 
 export const loginWithStarseed = async (email: string, password: string): Promise<StarseedUser | null> => {
@@ -25,10 +27,18 @@ export const loginWithStarseed = async (email: string, password: string): Promis
     throw new Error(error?.message || "Login failed");
   }
 
+  const { data: profile } = await supabase
+    .from('os_profiles')
+    .select('avatar_url, cover_url, display_name')
+    .eq('user_id', data.user.id)
+    .single();
+
   return {
     id: data.user.id,
     email: data.user.email || '',
-    displayName: data.user.user_metadata?.full_name || 'Starseed Explorer',
+    displayName: profile?.display_name || data.user.user_metadata?.full_name || 'Starseed Explorer',
+    avatar_url: profile?.avatar_url,
+    cover_url: profile?.cover_url,
   };
 };
 
@@ -39,10 +49,18 @@ export const logoutStarseed = async () => {
 export const getCurrentStarseedUser = async (): Promise<StarseedUser | null> => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
+    const { data: profile } = await supabase
+      .from('os_profiles')
+      .select('avatar_url, cover_url, display_name')
+      .eq('user_id', session.user.id)
+      .single();
+
     return {
       id: session.user.id,
       email: session.user.email || '',
-      displayName: session.user.user_metadata?.full_name || 'Starseed Explorer',
+      displayName: profile?.display_name || session.user.user_metadata?.full_name || 'Starseed Explorer',
+      avatar_url: profile?.avatar_url,
+      cover_url: profile?.cover_url,
     };
   }
   return null;
@@ -131,6 +149,99 @@ export const fetchLiveSessions = async () => {
     return [];
   }
   return data;
+};
+
+// --- OS Files Library Sync ---
+
+export const exportPresetToOSLibrary = async (node: FileSystemNode, userId: string) => {
+  if (!node.content) throw new Error("Solo se pueden subir presets (no carpetas puras)");
+  
+  const presetContent = {
+    ...node.content,
+    authorId: userId,
+  };
+
+  const jsonBlob = new Blob([JSON.stringify(presetContent, null, 2)], { type: 'application/json' });
+  const filename = `${node.name}.json`;
+  const storagePath = `${userId}/omnifrecuencias_presets/${filename}`;
+
+  // 1. Upload to storage
+  const { error: uploadError } = await supabase.storage
+    .from('os-files')
+    .upload(storagePath, jsonBlob, {
+      contentType: 'application/json',
+      upsert: true
+    });
+
+  if (uploadError) {
+    console.error("Error uploading to os-files storage:", uploadError);
+    throw uploadError;
+  }
+
+  // 2. Insert/Update os_files table
+  const { data: dbData, error: dbError } = await supabase
+    .from('os_files')
+    .upsert({
+      owner: userId,
+      name: filename,
+      mime: 'application/json',
+      size: jsonBlob.size,
+      path: storagePath,
+      is_public: false,
+      meta: { type: 'omnifrecuencias_preset', category: (node.content as any).category || 'synergy' }
+    }, { onConflict: 'path' })
+    .select();
+
+  if (dbError) {
+    console.error("Error saving to os_files table:", dbError);
+    throw dbError;
+  }
+  
+  return dbData;
+};
+
+export const importPresetsFromOSLibrary = async (userId: string): Promise<FileSystemNode[]> => {
+  const { data, error } = await supabase
+    .from('os_files')
+    .select('*')
+    .eq('owner', userId)
+    .like('path', '%omnifrecuencias_presets/%')
+    .eq('mime', 'application/json');
+
+  if (error) {
+    console.error("Error fetching presets from OS Library:", error);
+    return [];
+  }
+
+  const nodes: FileSystemNode[] = [];
+  
+  for (const item of data) {
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('os-files')
+      .download(item.path);
+
+    if (downloadError || !fileData) {
+      console.error("Failed to download preset:", item.name);
+      continue;
+    }
+
+    try {
+      const text = await fileData.text();
+      const content = JSON.parse(text) as PresetContent;
+      nodes.push({
+        id: item.id,
+        parentId: 'os_library_presets',
+        name: item.name.replace('.json', ''),
+        type: 'file',
+        content,
+        createdAt: new Date(item.created_at).getTime()
+      });
+    } catch (e) {
+      console.error("Failed to parse JSON for", item.name);
+    }
+  }
+
+  return nodes;
 };
 
 export const deleteLiveSession = async (sessionId: string) => {
