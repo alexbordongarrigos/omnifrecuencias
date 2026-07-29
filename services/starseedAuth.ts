@@ -134,7 +134,18 @@ export const createLiveSession = async (presetContent: PresetContent, hostId: st
     .select();
   
   if (error) throw error;
-  return data[0];
+  
+  const row = data[0];
+  return {
+    id: row.id,
+    hostId: row.host_id,
+    hostName: row.host_name,
+    presetName: row.preset_name,
+    presetContent: row.preset_content as PresetContent,
+    isPublic: row.is_public,
+    allowOpenModifications: row.allow_open_modifications,
+    createdAt: new Date(row.created_at).getTime()
+  };
 };
 
 export const fetchLiveSessions = async () => {
@@ -148,7 +159,17 @@ export const fetchLiveSessions = async () => {
     console.error("Error fetching live sessions:", error);
     return [];
   }
-  return data;
+
+  return data.map(row => ({
+    id: row.id,
+    hostId: row.host_id,
+    hostName: row.host_name,
+    presetName: row.preset_name,
+    presetContent: row.preset_content as PresetContent,
+    isPublic: row.is_public,
+    allowOpenModifications: row.allow_open_modifications,
+    createdAt: new Date(row.created_at).getTime()
+  }));
 };
 
 // --- OS Files Library Sync ---

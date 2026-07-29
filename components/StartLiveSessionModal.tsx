@@ -66,61 +66,65 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-md bg-black/90 border border-white/10 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent pointer-events-none"></div>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in-up">
         
-        <div className="flex justify-between items-start mb-6 relative z-10">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-red-500/20 text-red-400">
-              <Icon name="Radio" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-white">Transmitir en Vivo</h2>
-          </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white transition-colors">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Icon name="Radio" size={18} className="text-fuchsia-400" />
+            Transmitir Vibras (Red Híbrida)
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1">
             <Icon name="X" size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleStart} className="space-y-5 relative z-10">
-          <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nombre de la Sesión</label>
-            <input 
-              type="text" 
-              required
-              value={presetName}
-              onChange={e => setPresetName(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors"
-            />
-          </div>
+        <form onSubmit={handleStart} className="p-6">
+          <p className="text-sm text-slate-400 mb-6">
+            Configura los canales de transmisión cuántica. Puedes operar de manera híbrida o completamente off-grid.
+          </p>
 
-          <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl">
-            <input 
-              type="checkbox" 
-              id="isPublic" 
-              checked={isPublic}
-              onChange={e => setIsPublic(e.target.checked)}
-              className="w-5 h-5 accent-red-500"
-            />
-            <label htmlFor="isPublic" className="flex-1 cursor-pointer">
-              <span className="block text-sm font-bold text-white">Sesión Pública</span>
-              <span className="block text-xs text-slate-400">Aparecerá en la pestaña "Entonación" para toda la comunidad.</span>
-            </label>
-          </div>
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Nombre de la Sesión</label>
+              <input
+                type="text"
+                required
+                value={presetName}
+                onChange={e => setPresetName(e.target.value)}
+                placeholder="Ej. Meditación Pineal Global"
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors"
+                autoFocus
+              />
+            </div>
 
-          <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-4 rounded-xl">
-            <input 
-              type="checkbox" 
-              id="allowModifications" 
-              checked={allowOpenModifications}
-              onChange={e => setAllowOpenModifications(e.target.checked)}
-              className="w-5 h-5 accent-red-500"
-            />
-            <label htmlFor="allowModifications" className="flex-1 cursor-pointer">
-              <span className="block text-sm font-bold text-white">Modificaciones Abiertas</span>
-              <span className="block text-xs text-slate-400">Permitir a los participantes modificar los parámetros de las frecuencias.</span>
-            </label>
-          </div>
+            <div className="flex items-center gap-3 bg-black/30 border border-white/10 p-3 rounded-xl hover:border-white/20 transition-colors">
+              <input 
+                type="checkbox" 
+                id="isPublic" 
+                checked={isPublic}
+                onChange={e => setIsPublic(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-gray-800"
+              />
+              <label htmlFor="isPublic" className="flex-1 cursor-pointer">
+                <span className="block text-sm font-bold text-white">Sesión Pública</span>
+                <span className="block text-xs text-slate-400">Aparecerá en la pestaña "Entonación" para toda la comunidad.</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 bg-black/30 border border-white/10 p-3 rounded-xl hover:border-white/20 transition-colors">
+              <input 
+                type="checkbox" 
+                id="allowModifications" 
+                checked={allowOpenModifications}
+                onChange={e => setAllowOpenModifications(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-gray-800"
+              />
+              <label htmlFor="allowModifications" className="flex-1 cursor-pointer">
+                <span className="block text-sm font-bold text-white">Modificaciones Abiertas</span>
+                <span className="block text-xs text-slate-400">Permitir a los participantes modificar los parámetros de las frecuencias.</span>
+              </label>
+            </div>
 
           <div className="pt-2 border-t border-white/10 mt-4">
              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Topología de Red</label>
@@ -139,9 +143,9 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
                   <div className="flex-1">
                     <div className="font-bold text-sm text-white flex items-center gap-2">
                       <Icon name="Globe" size={14} className={useGlobalWebRTC ? 'text-cyan-400' : 'text-slate-500'} />
-                      Red Global (Internet)
+                      Red Global (Internet / WebRTC)
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">Sincronización mundial por WebRTC a través de Starseed OS.</div>
+                    <div className="text-xs text-slate-400 mt-1">Conecta con usuarios de todo el mundo mediante los servidores centrales de Starseed OS. Requiere conexión a internet.</div>
                   </div>
                 </label>
 
@@ -158,23 +162,46 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
                   <div className="flex-1">
                     <div className="font-bold text-sm text-white flex items-center gap-2">
                       <Icon name="RadioReceiver" size={14} className={useLocalMesh ? 'text-green-400' : 'text-slate-500'} />
-                      Mesh P2P Local (Radio)
+                      Mesh P2P Local (Antena Meshtastic)
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">Conecta tu antena para sincronización ultrabaja off-grid.</div>
+                    <div className="text-xs text-slate-400 mt-1">Detecta nodos físicos en tu área para sincronización de ultra-baja latencia sin necesidad de internet (Off-grid).</div>
                   </div>
                 </label>
               </div>
+              {!useGlobalWebRTC && !useLocalMesh && (
+                <div className="mt-3 text-xs text-red-400 flex items-center gap-1">
+                  <Icon name="AlertTriangle" size={12} />
+                  Debes seleccionar al menos un canal de transmisión.
+                </div>
+              )}
+            </div>
           </div>
 
-          {error && <p className="text-red-400 text-sm font-bold">{error}</p>}
+          {error && <p className="text-red-400 text-sm font-bold text-center mb-4">{error}</p>}
 
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] flex justify-center items-center gap-2"
-          >
-            {loading ? <Icon name="Loader" className="animate-spin" /> : <><Icon name="Play" size={18} /> Iniciar Transmisión</>}
-          </button>
+          <div className="mt-6 flex gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-4 py-3 rounded-xl border border-white/10 text-slate-300 font-bold hover:bg-white/5 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading || (!useGlobalWebRTC && !useLocalMesh)}
+              className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold hover:from-fuchsia-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(192,38,211,0.3)] flex justify-center items-center gap-2"
+            >
+              {loading ? (
+                <Icon name="Loader" className="animate-spin" />
+              ) : (
+                <>
+                  <Icon name="Radio" size={16} className={(!useGlobalWebRTC && !useLocalMesh) ? '' : 'animate-pulse'} />
+                  Iniciar Sincronización
+                </>
+              )}
+            </button>
+          </div>
         </form>
       </div>
     </div>

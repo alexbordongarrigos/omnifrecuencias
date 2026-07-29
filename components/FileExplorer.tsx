@@ -174,17 +174,13 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
                <p className="text-sm font-medium tracking-widest uppercase opacity-50">Carpeta vacía</p>
              </div>
            ) : (
-             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {sortedChildren.map(node => (
                   <div 
                     key={node.id}
                     onClick={() => {
-                        if (node.type === 'folder') {
-                            setCurrentFolderId(node.id);
-                            setSelectedId(null);
-                        } else {
-                            setSelectedId(node.id);
-                        }
+                        if (node.type === 'folder') setCurrentFolderId(node.id);
+                        else setSelectedId(node.id);
                     }}
                     onDoubleClick={() => {
                         if (node.type === 'file' && node.content) {
@@ -193,50 +189,100 @@ const FileExplorer: React.FC<Props> = ({ mode, onFileSelect, onClose, fs, curren
                         }
                     }}
                     className={`
-                      group relative p-5 rounded-2xl border transition-all duration-300 cursor-pointer flex flex-col items-center text-center gap-4
+                      relative group cursor-pointer rounded-2xl flex flex-col transition-all duration-300 border overflow-hidden
                       ${selectedId === node.id 
-                        ? 'bg-cyan-950/40 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.15),inset_0_0_15px_rgba(34,211,238,0.1)] -translate-y-1' 
-                        : 'bg-black/40 border-white/10 hover:bg-white/5 hover:border-white/20 hover:shadow-[0_5px_15px_rgba(0,0,0,0.5)] hover:-translate-y-0.5'}
+                          ? 'bg-cyan-950/40 border-cyan-500/50 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_0_15px_rgba(34,211,238,0.1)] -translate-y-1' 
+                          : 'bg-black/40 border-white/5 hover:bg-black/60 hover:border-white/20 hover:-translate-y-0.5'}
+                      ${node.type === 'file' ? 'p-4 col-span-1 sm:col-span-1 aspect-[4/3]' : 'items-center justify-center gap-3 p-4 aspect-square'}
                     `}
                   >
-                     <div className={`
-                       w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 border
-                       ${node.type === 'folder' 
-                           ? 'bg-amber-950/30 text-amber-400 border-amber-500/20 shadow-[inset_0_0_15px_rgba(245,158,11,0.1)] group-hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
-                           : 'bg-purple-950/30 text-purple-400 border-purple-500/20 shadow-[inset_0_0_15px_rgba(168,85,247,0.1)] group-hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]'}
-                     `}>
-                        <Icon name={node.type === 'folder' ? 'Folder' : 'FileText'} size={28} className="drop-shadow-[0_0_5px_currentColor]" />
-                     </div>
-                     
-                     {editingNodeId === node.id ? (
-                        <input 
-                          autoFocus
-                          type="text"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
+                     {node.type === 'folder' ? (
+                       <>
+                         <div className={`
+                           w-14 h-14 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110 border
+                           bg-amber-950/30 text-amber-400 border-amber-500/20 shadow-[inset_0_0_15px_rgba(245,158,11,0.1)] group-hover:shadow-[0_0_15px_rgba(245,158,11,0.2)]
+                         `}>
+                            <Icon name="Folder" size={28} className="drop-shadow-[0_0_5px_currentColor]" />
+                         </div>
+                         
+                         {editingNodeId === node.id ? (
+                            <input 
+                              autoFocus
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                      if (editingName.trim()) fs.renameNode(node.id, editingName.trim());
+                                      setEditingNodeId(null);
+                                  } else if (e.key === 'Escape') {
+                                      setEditingNodeId(null);
+                                  }
+                              }}
+                              onBlur={() => {
                                   if (editingName.trim()) fs.renameNode(node.id, editingName.trim());
                                   setEditingNodeId(null);
-                              } else if (e.key === 'Escape') {
-                                  setEditingNodeId(null);
-                              }
-                          }}
-                          onBlur={() => {
-                              if (editingName.trim()) fs.renameNode(node.id, editingName.trim());
-                              setEditingNodeId(null);
-                          }}
-                          className="w-full bg-black/80 border border-cyan-500/50 text-white text-xs font-medium text-center rounded-lg px-2 py-1.5 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.2)]"
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                              }}
+                              className="w-full bg-black/80 border border-cyan-500/50 text-white text-xs font-medium text-center rounded-lg px-2 py-1.5 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.2)]"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                         ) : (
+                            <span className={`text-xs font-medium break-words w-full line-clamp-2 text-center leading-relaxed transition-colors ${selectedId === node.id ? 'text-cyan-100' : 'text-slate-300 group-hover:text-white'}`}>
+                                {node.name}
+                            </span>
+                         )}
+                       </>
                      ) : (
-                        <span className={`text-xs font-medium break-words w-full line-clamp-2 leading-relaxed transition-colors ${selectedId === node.id ? 'text-cyan-100' : 'text-slate-300 group-hover:text-white'}`}>
-                            {node.name}
-                        </span>
+                       // Rich File Card
+                       <div className="flex flex-col h-full w-full text-left relative z-10">
+                         <div className="flex justify-between items-start mb-2">
+                           <div className={`p-2 rounded-xl bg-purple-950/30 text-purple-400 border border-purple-500/20 shadow-[inset_0_0_10px_rgba(168,85,247,0.1)]`}>
+                             <Icon name="FileAudio" size={16} />
+                           </div>
+                           <span className="text-[9px] uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-full text-slate-300 font-mono">
+                             {node.content?.oscillators?.length || 0} Osc
+                           </span>
+                         </div>
+                         
+                         {editingNodeId === node.id ? (
+                            <input 
+                              autoFocus
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                      if (editingName.trim()) fs.renameNode(node.id, editingName.trim());
+                                      setEditingNodeId(null);
+                                  } else if (e.key === 'Escape') {
+                                      setEditingNodeId(null);
+                                  }
+                              }}
+                              onBlur={() => {
+                                  if (editingName.trim()) fs.renameNode(node.id, editingName.trim());
+                                  setEditingNodeId(null);
+                              }}
+                              className="w-full bg-black/80 border border-cyan-500/50 text-white text-sm font-bold rounded-lg px-2 py-1 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.2)] mb-1"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                         ) : (
+                           <h4 className="font-bold text-white text-sm mb-1 truncate">{node.name}</h4>
+                         )}
+
+                         <p className="text-[10px] text-slate-400 line-clamp-2 flex-grow">
+                           {node.content?.description || 'Sin descripción'}
+                         </p>
+
+                         {node.content?.category && (
+                           <div className="mt-2 text-[9px] uppercase font-bold tracking-widest text-cyan-500/80">
+                             {node.content.category}
+                           </div>
+                         )}
+                       </div>
                      )}
                      
                      {/* Hover Actions */}
-                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1 bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/10 shadow-lg">
+                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex gap-1 bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/10 shadow-lg z-20">
                          <button 
                            onClick={async (e) => {
                              e.stopPropagation();
