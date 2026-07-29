@@ -41,6 +41,22 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const previewOscillatorsRef = React.useRef<OscillatorNode[]>([]);
   const previewGainsRef = React.useRef<GainNode[]>([]);
 
+  const stopPreview = () => {
+    previewOscillatorsRef.current.forEach(osc => {
+       try { osc.stop(); osc.disconnect(); } catch(e) {}
+    });
+    previewGainsRef.current.forEach(gain => {
+       try { gain.disconnect(); } catch(e) {}
+    });
+    previewOscillatorsRef.current = [];
+    previewGainsRef.current = [];
+    if (previewAudioContextRef.current) {
+       previewAudioContextRef.current.close();
+       previewAudioContextRef.current = null;
+    }
+    setPreviewingId(null);
+  };
+
   useEffect(() => {
     const init = async () => {
       const currentUser = await getCurrentStarseedUser();
@@ -115,21 +131,6 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
     action();
   };
   
-  const stopPreview = () => {
-    previewOscillatorsRef.current.forEach(osc => {
-       try { osc.stop(); osc.disconnect(); } catch(e) {}
-    });
-    previewGainsRef.current.forEach(gain => {
-       try { gain.disconnect(); } catch(e) {}
-    });
-    previewOscillatorsRef.current = [];
-    previewGainsRef.current = [];
-    if (previewAudioContextRef.current) {
-       previewAudioContextRef.current.close();
-       previewAudioContextRef.current = null;
-    }
-    setPreviewingId(null);
-  };
 
   const togglePreview = (sessionId: string, oscillators: OscillatorState[]) => {
      if (previewingId === sessionId) {
