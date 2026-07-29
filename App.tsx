@@ -257,6 +257,7 @@ const App: React.FC = () => {
   }
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen relative overflow-x-hidden selection:bg-cyan-500/30 selection:text-cyan-100">
       
       {/* --- Ambient Background --- */}
@@ -550,6 +551,7 @@ const App: React.FC = () => {
          />
       )}
     </div>
+    </ErrorBoundary>
   );
 };
 
