@@ -31,7 +31,14 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  
+  // Local audio context for previewing
+  const previewAudioContextRef = React.useRef<AudioContext | null>(null);
+  const previewOscillatorsRef = React.useRef<OscillatorNode[]>([]);
+  const previewGainsRef = React.useRef<GainNode[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -43,6 +50,10 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
       setLoading(false);
     };
     init();
+    
+    return () => {
+      stopPreview(); // Cleanup preview audio on unmount
+    };
   }, []);
 
   const loadData = async () => {
@@ -102,8 +113,78 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
     }
     action();
   };
+  
+  const stopPreview = () => {
+    previewOscillatorsRef.current.forEach(osc => {
+       try { osc.stop(); osc.disconnect(); } catch(e) {}
+    });
+    previewGainsRef.current.forEach(gain => {
+       try { gain.disconnect(); } catch(e) {}
+    });
+    previewOscillatorsRef.current = [];
+    previewGainsRef.current = [];
+    if (previewAudioContextRef.current) {
+       previewAudioContextRef.current.close();
+       previewAudioContextRef.current = null;
+    }
+    setPreviewingId(null);
+  };
 
-  const filteredPresets = selectedCategory === 'all' ? presets : presets.filter(p => p.content?.category === selectedCategory);
+  const togglePreview = (sessionId: string, oscillators: OscillatorState[]) => {
+     if (previewingId === sessionId) {
+         stopPreview();
+         return;
+     }
+     stopPreview();
+     setPreviewingId(sessionId);
+     
+     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+     previewAudioContextRef.current = ctx;
+     
+     const masterGain = ctx.createGain();
+     masterGain.gain.value = 0.5; // reduced volume for preview
+     masterGain.connect(ctx.destination);
+     
+     oscillators.forEach(oscData => {
+         const osc = ctx.createOscillator();
+         const gain = ctx.createGain();
+         
+         osc.type = oscData.type as OscillatorType;
+         osc.frequency.value = oscData.frequency;
+         gain.gain.value = oscData.volume;
+         
+         if (oscData.type === 'binaural') {
+             // simplify binaural to sine for preview
+             osc.type = 'sine';
+         }
+         
+         osc.connect(gain);
+         gain.connect(masterGain);
+         osc.start();
+         
+         previewOscillatorsRef.current.push(osc);
+         previewGainsRef.current.push(gain);
+     });
+     
+     // Stop preview automatically after 5 seconds
+     setTimeout(() => {
+        if (previewAudioContextRef.current === ctx) {
+            stopPreview();
+        }
+     }, 5000);
+  };
+
+  let filteredPresets = selectedCategory === 'all' ? presets : presets.filter(p => p.content?.category === selectedCategory);
+  if (sortBy === 'recent') filteredPresets.sort((a, b) => b.createdAt - a.createdAt);
+  else if (sortBy === 'popular') filteredPresets.sort((a, b) => (b.content?.downloads || 0) - (a.content?.downloads || 0));
+
+  let sortedSessions = [...sessions];
+  if (sortBy === 'recent') sortedSessions.sort((a, b) => b.createdAt - a.createdAt);
+  else if (sortBy === 'popular') sortedSessions.sort((a, b) => (b.participantsCount || 0) - (a.participantsCount || 0));
+
+  let sortedProfiles = [...profiles];
+  if (sortBy === 'recent') sortedProfiles.sort((a, b) => b.lastActive - a.lastActive);
+  else if (sortBy === 'popular') sortedProfiles.sort((a, b) => b.resonancesCount - a.resonancesCount);
 
   return (
     <div className="p-6 h-full flex flex-col relative">
@@ -207,11 +288,15 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
 
       {activeTab === 'vibras' && (
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
             <h2 className="text-xl font-bold flex items-center gap-2 text-cyan-300">
               <Icon name="Globe" size={24} /> Librería de Partículas
             </h2>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex bg-black/40 border border-white/10 rounded-lg p-1 mr-2">
+                 <button onClick={() => setSortBy('recent')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'recent' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Recientes</button>
+                 <button onClick={() => setSortBy('popular')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'popular' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Populares</button>
+              </div>
               <button onClick={() => handleProtectedAction(() => setShowPublishModal(true))} className="px-3 py-1.5 bg-amber-500/20 text-amber-300 hover:bg-amber-500 hover:text-black rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
                 <Icon name="Upload" size={14} /> Publicar Partícula
               </button>
@@ -290,13 +375,17 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
 
       {activeTab === 'entonacion' && (
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-2">
             <h2 className="text-xl font-bold flex items-center gap-2 text-purple-300">
               <Icon name="Radio" size={24} /> Sincronizaciones Cuánticas
             </h2>
-            <div className="flex gap-2">
-               <button onClick={() => handleProtectedAction(() => { if (onStartSessionRequest) onStartSessionRequest(); })} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2">
-                <Icon name="Radio" size={14} /> Transmitir Vibras
+            <div className="flex flex-wrap gap-2 items-center">
+               <div className="flex bg-black/40 border border-white/10 rounded-lg p-1 mr-2">
+                 <button onClick={() => setSortBy('recent')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'recent' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Nuevas</button>
+                 <button onClick={() => setSortBy('popular')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'popular' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Más Activas</button>
+              </div>
+               <button onClick={() => handleProtectedAction(() => { if (onStartSessionRequest) onStartSessionRequest(); })} className="px-3 py-1.5 bg-purple-500/20 text-purple-300 hover:bg-purple-500 hover:text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                <Icon name="Radio" size={14} className="animate-pulse" /> Transmitir
               </button>
               <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
                 <Icon name="RefreshCw" size={18} />
@@ -305,36 +394,89 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {sessions.map(session => (
-               <div key={session.id} className="bg-black/60 border border-purple-500/30 p-5 rounded-2xl hover:border-purple-400 transition-colors relative overflow-hidden group">
-                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-colors"></div>
+             {sortedSessions.map(session => (
+               <div key={session.id} className="bg-gradient-to-br from-black/80 to-[#1e1a2d]/80 border border-purple-500/30 rounded-2xl hover:border-purple-400 transition-colors relative overflow-hidden group flex flex-col">
                  
-                 <div className="relative z-10">
-                   <div className="flex justify-between items-start mb-2">
-                     <h3 className="text-lg font-bold text-white">{session.presetName}</h3>
-                     <span className="flex items-center gap-1 text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded-full font-bold animate-pulse">
+                 {/* Cover Background */}
+                 <div className="absolute inset-0 z-0">
+                    {session.cover_url ? (
+                        <img src={session.cover_url} className="w-full h-full object-cover opacity-20 mix-blend-screen" />
+                    ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-500/10 to-transparent blur-2xl"></div>
+                    )}
+                 </div>
+                 
+                 <div className="relative z-10 flex flex-col h-full p-5">
+                   <div className="flex justify-between items-start mb-3">
+                     <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full border-2 border-purple-500/50 overflow-hidden bg-black/50">
+                            {session.avatar_url ? (
+                                <img src={session.avatar_url} className="w-full h-full object-cover" />
+                            ) : (
+                                <Icon name="User" className="w-full h-full p-2 text-purple-400" />
+                            )}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white leading-tight">{session.presetName}</h3>
+                          <p className="text-xs text-slate-400">por <span className="text-purple-300 font-bold">{session.hostName}</span></p>
+                        </div>
+                     </div>
+                     <span className="flex items-center gap-1 text-[10px] bg-red-500/20 text-red-400 px-2 py-1 rounded-full font-bold animate-pulse whitespace-nowrap">
                        <Icon name="Radio" size={10} /> EN VIVO
                      </span>
                    </div>
                    
-                   <p className="text-sm text-slate-400 mb-4">Host: <span className="text-purple-300 font-bold">{session.hostName}</span></p>
+                   <p className="text-xs text-slate-300 mb-4 flex-grow line-clamp-2">
+                       {session.description || session.presetContent?.description || 'Sin descripción.'}
+                   </p>
                    
-                   <div className="flex items-center gap-4 text-[10px] text-slate-500 mb-6">
-                     <span className="flex items-center gap-1"><Icon name="Users" size={12}/> {session.participantsCount || 0} Conectados</span>
-                     <span className="flex items-center gap-1"><Icon name="Settings" size={12}/> {session.allowOpenModifications ? 'Abierto' : 'Sólo Host'}</span>
+                   <div className="bg-black/50 rounded-lg p-2 mb-4 text-xs text-slate-400 flex flex-col gap-1 border border-white/5">
+                        <div className="flex justify-between items-center">
+                            <span>Frecuencias Activas:</span>
+                            <span className="text-white font-mono">{session.presetContent?.oscillators?.length || 0}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span>Resultante:</span>
+                            <span className="text-cyan-400 font-mono">
+                                {(session.presetContent?.oscillators?.reduce((acc, o) => acc + o.frequency, 0) / (session.presetContent?.oscillators?.length || 1)).toFixed(2)} Hz
+                            </span>
+                        </div>
+                   </div>
+                   
+                   <div className="flex items-center gap-4 text-[10px] text-slate-500 mb-4 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 justify-between">
+                     <span className="flex items-center gap-1"><Icon name="Users" size={12} className="text-fuchsia-400"/> {session.participantsCount || 1} Mentes</span>
+                     <span className="flex items-center gap-1">
+                         <Icon name={session.allowOpenModifications ? 'Unlock' : 'Lock'} size={12} className={session.allowOpenModifications ? 'text-green-400' : 'text-red-400'}/> 
+                         {session.allowOpenModifications ? 'Abierto' : 'Sólo Host'}
+                     </span>
+                     {session.fixedPermissions && (
+                         <span className="flex items-center gap-1 text-amber-400" title="Host Persistente"><Icon name="Anchor" size={12} /> Fijo</span>
+                     )}
                    </div>
 
-                   <button 
-                     onClick={() => onJoinSession(session)}
-                     className="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] flex items-center justify-center gap-2"
-                   >
-                     <Icon name="Headphones" size={16} /> Sincronizar
-                   </button>
+                   <div className="flex gap-2 mt-auto">
+                        <button 
+                            onClick={() => togglePreview(session.id, session.presetContent?.oscillators || [])}
+                            className={`p-2 rounded-xl border transition-colors flex items-center justify-center shrink-0 ${previewingId === session.id ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300' : 'bg-black/50 border-white/10 hover:border-white/20 text-slate-400 hover:text-white'}`}
+                            title="Pre-escuchar Sonido"
+                        >
+                            {previewingId === session.id ? <Icon name="Square" size={16} /> : <Icon name="Play" size={16} />}
+                        </button>
+                        <button 
+                        onClick={() => {
+                            stopPreview();
+                            onJoinSession(session);
+                        }}
+                        className="flex-1 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(168,85,247,0.4)] hover:shadow-[0_0_25px_rgba(168,85,247,0.6)] flex items-center justify-center gap-2"
+                        >
+                        <Icon name="Headphones" size={16} /> Sincronizar
+                        </button>
+                   </div>
                  </div>
                </div>
              ))}
 
-             {sessions.length === 0 && (
+             {sortedSessions.length === 0 && (
                <div className="col-span-full py-16 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl">
                  <Icon name="MicOff" size={32} className="mx-auto mb-3 opacity-40" />
                  <p className="mb-1 text-white/70">No hay sincronizaciones activas.</p>
@@ -347,17 +489,23 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
 
       {activeTab === 'perfiles' && (
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-2">
             <h2 className="text-xl font-bold flex items-center gap-2 text-amber-400">
               <Icon name="Users" size={24} /> Exploradores Cuánticos
             </h2>
-            <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
-              <Icon name="RefreshCw" size={18} />
-            </button>
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex bg-black/40 border border-white/10 rounded-lg p-1 mr-2">
+                 <button onClick={() => setSortBy('recent')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'recent' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Recientes</button>
+                 <button onClick={() => setSortBy('popular')} className={`px-2 py-1 text-xs font-bold rounded ${sortBy === 'popular' ? 'bg-white/10 text-white' : 'text-slate-500'}`}>Más Resonantes</button>
+              </div>
+              <button onClick={loadData} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-300">
+                <Icon name="RefreshCw" size={18} />
+              </button>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {profiles.map(p => (
+            {sortedProfiles.map(p => (
               <div key={p.id} className="bg-black/60 border border-white/10 rounded-2xl overflow-hidden relative group hover:border-amber-500/50 transition-colors">
                 {/* Cover Image or fallback */}
                 <div className="h-20 bg-gradient-to-br from-slate-900 to-black relative">

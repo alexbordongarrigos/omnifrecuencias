@@ -120,14 +120,24 @@ export const fetchCommunityPresets = async (): Promise<FileSystemNode[]> => {
 
 // --- Live Sessions (Entonación) ---
 
-export const createLiveSession = async (presetContent: PresetContent, hostId: string, hostName: string, presetName: string, isPublic: boolean, allowOpenModifications: boolean) => {
+export const createLiveSession = async (
+  presetContent: PresetContent, 
+  hostId: string, 
+  hostName: string, 
+  presetName: string, 
+  isPublic: boolean, 
+  allowOpenModifications: boolean,
+  metadata?: { description?: string; cover_url?: string; avatar_url?: string; fixedPermissions?: boolean }
+) => {
+  const contentWithMetadata = { ...presetContent, sessionMetadata: metadata };
+
   const { data, error } = await supabase
     .from('omni_sessions')
     .insert({
       host_id: hostId,
       host_name: hostName,
       preset_name: presetName,
-      preset_content: presetContent,
+      preset_content: contentWithMetadata,
       is_public: isPublic,
       allow_open_modifications: allowOpenModifications
     })
@@ -136,15 +146,22 @@ export const createLiveSession = async (presetContent: PresetContent, hostId: st
   if (error) throw error;
   
   const row = data[0];
+  const parsedContent = row.preset_content as any;
+  const meta = parsedContent.sessionMetadata || {};
+
   return {
     id: row.id,
     hostId: row.host_id,
     hostName: row.host_name,
     presetName: row.preset_name,
-    presetContent: row.preset_content as PresetContent,
+    presetContent: parsedContent,
     isPublic: row.is_public,
     allowOpenModifications: row.allow_open_modifications,
-    createdAt: new Date(row.created_at).getTime()
+    createdAt: new Date(row.created_at).getTime(),
+    description: meta.description,
+    cover_url: meta.cover_url,
+    avatar_url: meta.avatar_url,
+    fixedPermissions: meta.fixedPermissions
   };
 };
 
@@ -160,16 +177,24 @@ export const fetchLiveSessions = async () => {
     return [];
   }
 
-  return data.map(row => ({
-    id: row.id,
-    hostId: row.host_id,
-    hostName: row.host_name,
-    presetName: row.preset_name,
-    presetContent: row.preset_content as PresetContent,
-    isPublic: row.is_public,
-    allowOpenModifications: row.allow_open_modifications,
-    createdAt: new Date(row.created_at).getTime()
-  }));
+  return data.map(row => {
+    const parsedContent = row.preset_content as any;
+    const meta = parsedContent.sessionMetadata || {};
+    return {
+      id: row.id,
+      hostId: row.host_id,
+      hostName: row.host_name,
+      presetName: row.preset_name,
+      presetContent: parsedContent,
+      isPublic: row.is_public,
+      allowOpenModifications: row.allow_open_modifications,
+      createdAt: new Date(row.created_at).getTime(),
+      description: meta.description,
+      cover_url: meta.cover_url,
+      avatar_url: meta.avatar_url,
+      fixedPermissions: meta.fixedPermissions
+    };
+  });
 };
 
 // --- OS Files Library Sync ---

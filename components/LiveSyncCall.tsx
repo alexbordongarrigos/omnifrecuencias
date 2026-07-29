@@ -44,6 +44,7 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
   const isHost = session.hostId === currentUser.id;
   const lastSentState = useRef<string>('');
   const [showHostPanel, setShowHostPanel] = useState(false);
+  const [showExitModal, setShowExitModal] = useState(false);
 
   const handleSyncReceive = (oscillators: any[], latencyMs: number = 0, vizTab?: string) => {
     lastSentState.current = JSON.stringify({ oscillators, vizTab });
@@ -308,12 +309,59 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
         </div>
 
         <button 
-          onClick={onLeave}
+          onClick={() => isHost ? setShowExitModal(true) : onLeave()} 
           className="bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/50 rounded-lg px-3 py-1 font-bold text-[10px] uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)]"
         >
           Desconectar
         </button>
       </div>
+
+      {showExitModal && (
+        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-purple-500/50 p-6 rounded-2xl w-full max-w-sm shadow-[0_0_30px_rgba(168,85,247,0.2)]">
+            <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+              <Icon name="LogOut" size={18} className="text-purple-400" />
+              Opciones de Salida (Host)
+            </h3>
+            <p className="text-xs text-slate-400 mb-6">
+              Como creador de la sesión, ¿qué deseas hacer con la transmisión actual?
+            </p>
+            <div className="space-y-3">
+              <button 
+                onClick={() => { setShowExitModal(false); onLeave(); }} 
+                className="w-full text-left px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/20 flex flex-col gap-1 transition-colors"
+              >
+                <span className="font-bold flex items-center gap-2"><Icon name="XCircle" size={14} /> Terminar para todos</span>
+                <span className="text-[10px] text-slate-500">Cierra la sala y desconecta la sincronización en la red.</span>
+              </button>
+              
+              <button 
+                onClick={() => { setShowExitModal(false); onLeave(); }} 
+                className="w-full text-left px-4 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 rounded-xl border border-cyan-500/20 flex flex-col gap-1 transition-colors"
+              >
+                <span className="font-bold flex items-center gap-2"><Icon name="Anchor" size={14} /> Dejar Sesión Activa</span>
+                <span className="text-[10px] text-slate-500">Sales de la sala pero la frecuencia sigue transmitiéndose para los conectados. {session.fixedPermissions ? 'Tus permisos se mantienen fijos.' : ''}</span>
+              </button>
+              
+              {participants.filter(p => p.id !== currentUser.id).length > 0 && (
+                <button 
+                  onClick={() => { alert("Funcionalidad de traspaso en desarrollo. La sesión quedará activa."); setShowExitModal(false); onLeave(); }} 
+                  className="w-full text-left px-4 py-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-xl border border-purple-500/20 flex flex-col gap-1 transition-colors"
+                >
+                  <span className="font-bold flex items-center gap-2"><Icon name="Users" size={14} /> Traspasar Host</span>
+                  <span className="text-[10px] text-slate-500">Asigna a otro participante como el nuevo controlador de las frecuencias.</span>
+                </button>
+              )}
+            </div>
+            <button 
+              onClick={() => setShowExitModal(false)}
+              className="mt-6 w-full py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
       
     </div>
   );

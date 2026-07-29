@@ -15,6 +15,13 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
   const [allowOpenModifications, setAllowOpenModifications] = useState(false);
   const [useGlobalWebRTC, setUseGlobalWebRTC] = useState(true);
   const [useLocalMesh, setUseLocalMesh] = useState(true);
+  
+  // New Metadata fields
+  const [description, setDescription] = useState('');
+  const [coverUrl, setCoverUrl] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [fixedPermissions, setFixedPermissions] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,6 +41,14 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
       
       let session = null;
       
+      // Metadata payload
+      const metadata = {
+        description: description.trim() || undefined,
+        cover_url: coverUrl.trim() || undefined,
+        avatar_url: avatarUrl.trim() || undefined,
+        fixedPermissions
+      };
+
       // If Global WebRTC is enabled, create session in Supabase DB
       if (useGlobalWebRTC && user) {
           session = await createLiveSession(
@@ -42,7 +57,8 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
             user.displayName,
             presetName,
             isPublic,
-            allowOpenModifications
+            allowOpenModifications,
+            metadata
           );
       } else {
           // Off-grid mode / Mesh only. Create a local mock session object.
@@ -51,10 +67,11 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
               presetName: presetName,
               hostId: user ? user.id : 'local-host',
               hostName: user ? user.displayName : 'Explorador Mesh',
-              presetContent: preset,
+              presetContent: { ...preset, sessionMetadata: metadata },
               isPublic: false,
               allowOpenModifications: allowOpenModifications,
-              createdAt: new Date().toISOString()
+              createdAt: Date.now(),
+              ...metadata
           };
       }
       
@@ -97,6 +114,39 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
                 autoFocus
               />
             </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Descripción (Opcional)</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Describe el propósito de esta sincronización..."
+                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors h-20 resize-none custom-scrollbar text-sm"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">URL Portada (Opcional)</label>
+                <input
+                  type="url"
+                  value={coverUrl}
+                  onChange={e => setCoverUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">URL Avatar (Opcional)</label>
+                <input
+                  type="url"
+                  value={avatarUrl}
+                  onChange={e => setAvatarUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors text-xs"
+                />
+              </div>
+            </div>
 
             <div className="flex items-center gap-3 bg-black/30 border border-white/10 p-3 rounded-xl hover:border-white/20 transition-colors">
               <input 
@@ -123,6 +173,20 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
               <label htmlFor="allowModifications" className="flex-1 cursor-pointer">
                 <span className="block text-sm font-bold text-white">Modificaciones Abiertas</span>
                 <span className="block text-xs text-slate-400">Permitir a los participantes modificar los parámetros de las frecuencias.</span>
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3 bg-fuchsia-900/10 border border-fuchsia-500/20 p-3 rounded-xl hover:border-fuchsia-500/40 transition-colors">
+              <input 
+                type="checkbox" 
+                id="fixedPermissions" 
+                checked={fixedPermissions}
+                onChange={e => setFixedPermissions(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-fuchsia-500 focus:ring-fuchsia-500 focus:ring-offset-gray-800"
+              />
+              <label htmlFor="fixedPermissions" className="flex-1 cursor-pointer">
+                <span className="block text-sm font-bold text-fuchsia-300">Persistencia de Host</span>
+                <span className="block text-xs text-slate-400">Si sales de la sesión, los permisos y controles de editor permanecerán con la configuración actual.</span>
               </label>
             </div>
 

@@ -231,6 +231,11 @@ export interface LiveSession {
   participantsCount?: number; // Added for UI
   useGlobalWebRTC?: boolean;
   useLocalMesh?: boolean;
+  // Enhanced Metadata
+  description?: string;
+  cover_url?: string;
+  avatar_url?: string;
+  fixedPermissions?: boolean; // If true, permissions don't change if host leaves
 }
 
 // --- Community Profiles & Resonances ---
