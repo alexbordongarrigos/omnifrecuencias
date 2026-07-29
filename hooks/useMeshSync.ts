@@ -62,7 +62,12 @@ export const useMeshSync = (onDataReceive?: (data: any) => void) => {
   };
 
   const broadcastData = async (data: any) => {
-    await meshNetwork.broadcastData(data);
+    // Inject a timestamp to the payload if it's an object, so peers can calculate latency
+    const payloadWithTimestamp = (typeof data === 'object' && data !== null) ? {
+      ...data,
+      timestamp: Date.now()
+    } : data;
+    await meshNetwork.broadcastData(payloadWithTimestamp);
   };
 
   return {

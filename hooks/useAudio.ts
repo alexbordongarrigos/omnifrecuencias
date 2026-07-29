@@ -224,7 +224,7 @@ export const useAudio = () => {
     destroyOscillatorNodes(id);
   };
 
-  const setAllOscillators = (newOscillatorsList: OscillatorState[]) => {
+  const setAllOscillators = (newOscillatorsList: OscillatorState[], latencyMs: number = 0) => {
     initAudio();
     // Destroy obsolete ones
     nodesRef.current.forEach((_, id) => {
@@ -232,15 +232,29 @@ export const useAudio = () => {
         destroyOscillatorNodes(id);
       }
     });
+    
+    // Apply latency compensation (quantum alignment)
+    const compensatedList = newOscillatorsList.map(osc => {
+      if (latencyMs > 0) {
+        // Advance phase to compensate for lost time
+        const phaseShift = osc.frequency * (latencyMs / 1000) * 360;
+        return {
+          ...osc,
+          phaseOffset: ((osc.phaseOffset || 0) + phaseShift) % 360
+        };
+      }
+      return osc;
+    });
+
     // Add/update new ones
-    newOscillatorsList.forEach(osc => {
+    compensatedList.forEach(osc => {
       if (nodesRef.current.has(osc.id)) {
         updateOscillatorNodes(osc);
       } else {
         createOscillatorNodes(osc);
       }
     });
-    setOscillators(newOscillatorsList);
+    setOscillators(compensatedList);
   };
 
   const updateOscillator = (id: string, changes: Partial<OscillatorState>) => {

@@ -8,11 +8,11 @@ export interface RemoteStream {
 }
 
 export const useWebRTC = (
-  sessionId: string, 
+  roomId: string, 
   currentUserId: string, 
   displayName: string, 
   enabled: boolean = true,
-  onSyncReceive?: (oscillators: any[]) => void
+  onSyncReceive?: (oscillators: any[], latencyMs?: number, vizTab?: string) => void
 ) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<RemoteStream[]>([]);
@@ -91,7 +91,9 @@ export const useWebRTC = (
       })
       .on('broadcast', { event: 'oscillator_sync' }, ({ payload }) => {
         if (payload.sender !== currentUserId && onSyncReceive) {
-          onSyncReceive(payload.oscillators);
+          // Calculate latency using the payload's timestamp
+          const latency = Date.now() - (payload.timestamp || Date.now());
+          onSyncReceive(payload.oscillators, latency, payload.vizTab);
         }
       })
       .subscribe(async (status) => {
@@ -224,12 +226,36 @@ export const useWebRTC = (
       setChatMessages(prev => [...prev, payload]);
     });
 
+    const permHandler = channelRef.current.on('broadcast', { event: 'session_permissions' }, ({ payload }: any) => {
+      if (payload.sender !== currentUserId) {
+        setPermissions(payload.permissions);
+      }
+    });
+
     return () => {
       if (channelRef.current) {
         channelRef.current.off('broadcast', chatHandler);
+        channelRef.current.off('broadcast', permHandler);
       }
     };
   }, [channelRef.current]);
+
+  const [permissions, setPermissions] = useState({
+    canEditFrequencies: false,
+    canUseMic: true,
+    canUseVideo: true,
+    canChat: true,
+  });
+
+  const broadcastPermissions = (perms: any) => {
+    if (!channelRef.current) return;
+    channelRef.current.send({
+      type: 'broadcast',
+      event: 'session_permissions',
+      payload: { sender: currentUserId, permissions: perms }
+    });
+    setPermissions(perms);
+  };
 
   const sendChatMessage = (text: string) => {
     if (!channelRef.current) return;
@@ -242,14 +268,16 @@ export const useWebRTC = (
     setChatMessages(prev => [...prev, msg]);
   };
 
-  const broadcastOscillatorSync = (oscillators: any[]) => {
+  const broadcastOscillatorSync = (oscillators: any[], vizTab?: string) => {
     if (!channelRef.current) return;
     channelRef.current.send({
       type: 'broadcast',
       event: 'oscillator_sync',
       payload: {
         sender: currentUserId,
-        oscillators
+        oscillators,
+        vizTab,
+        timestamp: Date.now()
       }
     });
   };
@@ -264,6 +292,8 @@ export const useWebRTC = (
     toggleAudio,
     chatMessages,
     sendChatMessage,
-    broadcastOscillatorSync
+    broadcastOscillatorSync,
+    permissions,
+    broadcastPermissions
   };
 };

@@ -17,6 +17,13 @@ import Introduction from './components/Introduction';
 import { LiveSession, PresetContent } from './types';
 import { getCurrentStarseedUser, StarseedUser } from './services/starseedAuth';
 
+export interface SessionPermissions {
+  canEditFrequencies: boolean;
+  canUseMic: boolean;
+  canUseVideo: boolean;
+  canChat: boolean;
+}
+
 type ViewMode = 'intro' | 'library' | 'generator' | 'online';
 
 // --- SYNERGY RECIPES ENGINE ---
@@ -133,18 +140,27 @@ const App: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOption['value']>('hz-asc');
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('intro');
-  const [activeSession, setActiveSession] = useState<LiveSession | null>(null);
   const [currentUser, setCurrentUser] = useState<StarseedUser | null>(null);
   
+  // Audio Engine Hook
+  const audio = useAudio();
+
+  // Session State
+  const [activeSession, setActiveSession] = useState<LiveSession | null>(null);
+  const [sessionPermissions, setSessionPermissions] = useState<SessionPermissions>({
+    canEditFrequencies: true,
+    canUseMic: true,
+    canUseVideo: true,
+    canChat: true,
+  });
+  const [activeVizTab, setActiveVizTab] = useState<'2d' | '3d' | 'spiral'>('2d');
+
   const [showStartSessionModal, setShowStartSessionModal] = useState(false);
   const [presetToStart, setPresetToStart] = useState<PresetContent | null>(null);
 
   React.useEffect(() => {
     getCurrentStarseedUser().then(user => setCurrentUser(user));
   }, []);
-
-  // Audio Engine Hook
-  const audio = useAudio();
 
   // Handler to add from Library to Generator
   const handleAddToPlayer = (item: FrequencyItem) => {
@@ -441,10 +457,13 @@ const App: React.FC = () => {
             <Generator 
                 audio={audio} 
                 isMasterPlaying={audio.isPlaying}
+                activeVizTab={activeVizTab}
+                onVizTabChange={setActiveVizTab}
                 onStartLiveSession={(preset) => {
                     setPresetToStart(preset);
                     setShowStartSessionModal(true);
                 }}
+                sessionPermissions={sessionPermissions}
             />
         )}
 
@@ -492,10 +511,20 @@ const App: React.FC = () => {
                   currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
                   onLeave={() => {
                       setActiveSession(null);
-                      // Don't switch viewMode here, just close the overlay
+                      setSessionPermissions({
+                        canEditFrequencies: true,
+                        canUseMic: true,
+                        canUseVideo: true,
+                        canChat: true,
+                      });
                   }} 
                   currentOscillators={audio.oscillators}
-                  onSyncReceive={audio.setAllOscillators}
+                  activeVizTab={activeVizTab}
+                  onSyncReceive={(oscillators, latencyMs, vizTab) => {
+                      audio.setAllOscillators(oscillators, latencyMs);
+                      if (vizTab) setActiveVizTab(vizTab);
+                  }}
+                  onPermissionsChange={setSessionPermissions}
                />
             </div>
          </div>

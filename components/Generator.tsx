@@ -16,6 +16,11 @@ interface Props {
   audio: ReturnType<typeof useAudio>;
   isMasterPlaying: boolean;
   onStartLiveSession?: (preset: PresetContent) => void;
+  sessionPermissions?: {
+    canEditFrequencies: boolean;
+  };
+  activeVizTab?: '2d' | '3d' | 'spiral';
+  onVizTabChange?: (tab: '2d' | '3d' | 'spiral') => void;
 }
 
 // Helper to get brainwave name
@@ -38,8 +43,10 @@ interface ResonanceResult {
     sourceB: string;
 }
 
-const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession }) => {
+const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession, sessionPermissions, activeVizTab = '2d', onVizTabChange }) => {
   const { oscillators, addOscillator, removeOscillator, updateOscillator, setAllOscillators, getCombinedAnalyser, getOscillatorAnalyser } = audio;
+  
+  const canEdit = sessionPermissions ? sessionPermissions.canEditFrequencies : true;
   
   // Undo/Redo Hook (Control+Z / Cmd+Z)
   const history = useUndoRedo(oscillators, setAllOscillators);
@@ -52,29 +59,30 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
   // AI Generator Modal state
   const [showAIModal, setShowAIModal] = useState(false);
 
-  // Visualizer Tab State ('2d' | '3d' | 'spiral')
-  const [vizTab, setVizTab] = useState<'2d' | '3d' | 'spiral'>('2d');
-
   // Wrapped addOscillator to capture history
   const handleAddOscillator = (initialState?: Partial<OscillatorState>) => {
+    if (!canEdit) return;
     history.pushState(oscillators);
     addOscillator(initialState);
   };
 
   // Wrapped removeOscillator to capture history
   const handleRemoveOscillator = (id: string) => {
+    if (!canEdit) return;
     history.pushState(oscillators);
     removeOscillator(id);
   };
 
   // Wrapped updateOscillator to capture history
   const handleUpdateOscillator = (id: string, changes: Partial<OscillatorState>) => {
+    if (!canEdit) return;
     history.pushState(oscillators);
     updateOscillator(id, changes);
   };
 
   // Apply AI Generated Preset
   const handleApplyAIPreset = (aiOscillators: Partial<OscillatorState>[]) => {
+    if (!canEdit) return;
     history.pushState(oscillators);
     // Clear existing
     oscillators.forEach(osc => removeOscillator(osc.id));
@@ -88,6 +96,7 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
 
   // Logic to remove all and load new or mix
   const loadPreset = (preset: PresetContent, mix: boolean = false) => {
+    if (!canEdit) return;
     history.pushState(oscillators);
     if (!mix) {
       // Clear existing
@@ -113,6 +122,7 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!canEdit) return;
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
@@ -221,9 +231,9 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
             <div className="flex items-center gap-2 bg-black/50 p-2 rounded-2xl border border-white/10 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]">
               <button
                 onClick={history.undo}
-                disabled={!history.canUndo}
+                disabled={!history.canUndo || !canEdit}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                  history.canUndo
+                  history.canUndo && canEdit
                     ? 'bg-cyan-950/50 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/60 shadow-[0_0_15px_rgba(34,211,238,0.2)]'
                     : 'text-slate-600 border border-transparent cursor-not-allowed opacity-50'
                 }`}
@@ -235,9 +245,9 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
 
               <button
                 onClick={history.redo}
-                disabled={!history.canRedo}
+                disabled={!history.canRedo || !canEdit}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-                  history.canRedo
+                  history.canRedo && canEdit
                     ? 'bg-purple-950/50 text-purple-300 border border-purple-500/40 hover:bg-purple-900/60 shadow-[0_0_15px_rgba(168,85,247,0.2)]'
                     : 'text-slate-600 border border-transparent cursor-not-allowed opacity-50'
                 }`}
@@ -251,7 +261,8 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
             {/* AI Generator Trigger button */}
             <button 
                 onClick={() => setShowAIModal(true)}
-                className="group relative overflow-hidden flex items-center justify-center gap-3 px-6 py-4 w-full sm:w-auto bg-gradient-to-r from-cyan-950/60 via-purple-950/60 to-pink-950/60 hover:from-cyan-900/80 hover:to-purple-900/80 text-cyan-100 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all duration-500 border-2 border-cyan-400/50 shadow-[0_0_30px_rgba(34,211,238,0.3),inset_0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_45px_rgba(34,211,238,0.5)] hover:-translate-y-1"
+                disabled={!canEdit}
+                className="group relative overflow-hidden flex items-center justify-center gap-3 px-6 py-4 w-full sm:w-auto bg-gradient-to-r from-cyan-950/60 via-purple-950/60 to-pink-950/60 hover:from-cyan-900/80 hover:to-purple-900/80 text-cyan-100 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all duration-500 border-2 border-cyan-400/50 shadow-[0_0_30px_rgba(34,211,238,0.3),inset_0_0_15px_rgba(34,211,238,0.2)] hover:shadow-[0_0_45px_rgba(34,211,238,0.5)] hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0"
             >
                 <div className="absolute inset-0 bg-gradient-to-r from-cyan-400/0 via-cyan-400/20 to-cyan-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 rounded-2xl"></div>
                 <Icon name="Zap" size={20} className="text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]" /> 
@@ -267,7 +278,8 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
             </button>
             <button 
                 onClick={() => { setExplorerMode('load'); setShowExplorer(true); }}
-                className="group relative overflow-hidden flex items-center justify-center gap-3 px-6 py-4 w-full sm:w-auto bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all duration-500 border-2 border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1),inset_0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:-translate-y-1 hover:border-purple-400/50"
+                disabled={!canEdit}
+                className="group relative overflow-hidden flex items-center justify-center gap-3 px-6 py-4 w-full sm:w-auto bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 rounded-2xl text-sm font-bold uppercase tracking-widest transition-all duration-500 border-2 border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.1),inset_0_0_10px_rgba(168,85,247,0.1)] hover:shadow-[0_0_30px_rgba(168,85,247,0.3)] hover:-translate-y-1 hover:border-purple-400/50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:-translate-y-0"
             >
                 <Icon name="Folder" size={20} className="drop-shadow-[0_0_8px_rgba(168,85,247,0.8)]" /> 
                 <span className="whitespace-nowrap">Cargar Preset</span>
@@ -293,9 +305,9 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
              <button onClick={handleExport} className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-cyan-300 hover:bg-cyan-500/10 rounded-xl transition-colors border border-transparent hover:border-cyan-500/20 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" title="Exportar Backup v.7">
                  <Icon name="Download" size={14} className="text-cyan-500/70" /> Exportar v.7
              </button>
-             <label className="flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-purple-500/20 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)]" title="Importar Backup">
+             <label className={`flex items-center gap-2 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-purple-300 hover:bg-purple-500/10 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-purple-500/20 shadow-[inset_0_0_10px_rgba(0,0,0,0.5)] ${!canEdit && 'opacity-50 cursor-not-allowed'}`} title="Importar Backup">
                  <Icon name="Upload" size={14} className="text-purple-500/70" /> Importar
-                 <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+                 <input type="file" accept=".json" onChange={handleImport} disabled={!canEdit} className="hidden" />
              </label>
          </div>
       </div>
@@ -343,39 +355,29 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
 
                 {/* 2D / 3D Cymatics Selector Tabs */}
                 <div className="grid grid-cols-3 sm:flex items-center gap-1 sm:gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-full lg:w-fit">
-                  <button
-                    onClick={() => setVizTab('2d')}
-                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
-                      vizTab === '2d'
-                        ? 'bg-cyan-950/60 text-cyan-300 border border-cyan-500/40 shadow-[0_0_15px_rgba(34,211,238,0.3)]'
-                        : 'text-slate-500 hover:text-white'
-                    }`}
-                  >
-                    <Icon name="Activity" size={16} className="sm:w-3.5 sm:h-3.5" /> 
-                    <span className="hidden sm:inline">Osciloscopio 2D</span>
-                    <span className="sm:hidden">Oscilo-<br/>scopio</span>
-                  </button>
-                  <button
-                    onClick={() => setVizTab('3d')}
-                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
-                      vizTab === '3d'
-                        ? 'bg-purple-950/60 text-purple-300 border border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
-                        : 'text-slate-500 hover:text-white'
-                    }`}
-                  >
-                    <Icon name="Orbit" size={16} className="sm:w-3.5 sm:h-3.5" />
-                    <span>Cimática<br className="sm:hidden"/> 3D</span>
-                  </button>
-                  <button
-                    onClick={() => setVizTab('spiral')}
-                    className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 px-1 sm:px-4 py-2 sm:py-1.5 rounded-lg text-[9px] sm:text-xs font-bold uppercase tracking-wider transition-all text-center leading-tight ${
-                      vizTab === 'spiral'
-                        ? 'bg-pink-950/60 text-pink-300 border border-pink-500/40 shadow-[0_0_15px_rgba(236,72,153,0.3)]'
-                        : 'text-slate-500 hover:text-white'
-                    }`}
-                  >
-                    <Icon name="Aperture" size={16} className="sm:w-3.5 sm:h-3.5" />
-                    <span>Espiral<br className="sm:hidden"/> Fractal</span>
+                <button
+                  onClick={() => canEdit && onVizTabChange && onVizTabChange('2d')}
+                  disabled={!canEdit}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '2d' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== '2d' && 'opacity-50 cursor-not-allowed'}`}
+                >
+                  <Icon name="Activity" size={14} />
+                  Ondas
+                </button>
+                <button
+                  onClick={() => canEdit && onVizTabChange && onVizTabChange('3d')}
+                  disabled={!canEdit}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '3d' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== '3d' && 'opacity-50 cursor-not-allowed'}`}
+                >
+                  <Icon name="Hexagon" size={14} />
+                  Cimática 3D
+                </button>
+                 <button
+                  onClick={() => canEdit && onVizTabChange && onVizTabChange('spiral')}
+                  disabled={!canEdit}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === 'spiral' ? 'bg-pink-500/20 text-pink-300 border border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== 'spiral' && 'opacity-50 cursor-not-allowed'}`}
+                >
+                    <Icon name="Aperture" size={14} />
+                    Espiral
                   </button>
                 </div>
             </div>
@@ -424,7 +426,7 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
         </div>
         
         {/* Render Selected Visualizer (2D Canvas or 3D Cymatics) */}
-        {vizTab === '2d' ? (
+        {activeVizTab === '2d' && (
           <div className="h-80 w-full bg-black/80 rounded-2xl border border-white/10 overflow-hidden relative shadow-[inset_0_0_40px_rgba(0,0,0,0.9)] z-10 group/viz">
               <Visualizer sources={visualizerSources} height={320} />
               <div className="absolute top-4 right-4 flex flex-col gap-2 items-end pointer-events-none z-20">
@@ -440,7 +442,9 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                   ))}
               </div>
           </div>
-        ) : vizTab === '3d' ? (
+        )}
+
+        {activeVizTab === '3d' && (
           <CymaticsVisualizer3D
             analyser={getCombinedAnalyser()}
             activeFrequencies={activeFreqsList}
@@ -451,7 +455,9 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
             isMasterPlaying={isMasterPlaying}
             height={380}
           />
-        ) : (
+        )}
+
+        {activeVizTab === 'spiral' && (
           <SpiralVisualizer
             analyser={getCombinedAnalyser()}
             activeOscillators={oscillators}
