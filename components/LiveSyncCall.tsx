@@ -45,6 +45,15 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
   const lastSentState = useRef<string>('');
   const [showHostPanel, setShowHostPanel] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [localPermissions, setLocalPermissions] = useState({
+    canEditFrequencies: false,
+    canUseMic: true,
+    canUseVideo: true,
+    canChat: true,
+  });
+  const [chatInput, setChatInput] = useState('');
+  const [showChat, setShowChat] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const handleSyncReceive = (oscillators: any[], latencyMs: number = 0, vizTab?: string) => {
     lastSentState.current = JSON.stringify({ oscillators, vizTab });
@@ -67,13 +76,6 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
   } = useWebRTC(session.id, currentUser.id, currentUser.displayName, session.useGlobalWebRTC !== false, handleSyncReceive);
 
   // If host, we keep local state and broadcast. If not host, we use remote state.
-  const [localPermissions, setLocalPermissions] = useState({
-    canEditFrequencies: false,
-    canUseMic: true,
-    canUseVideo: true,
-    canChat: true,
-  });
-
   const activePermissions = isHost ? localPermissions : remotePermissions;
 
   useEffect(() => {
@@ -120,9 +122,6 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
     }
   }, [currentOscillators, activeVizTab, broadcastOscillatorSync, broadcastMeshOscillators, currentUser.id]);
 
-  const [chatInput, setChatInput] = useState('');
-  const [showChat, setShowChat] = useState(false);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (showChat) {
