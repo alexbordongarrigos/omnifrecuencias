@@ -102,6 +102,16 @@ export const useWebRTC = (
         }
       });
 
+    channel.on('broadcast', { event: 'chat_message' }, ({ payload }: any) => {
+      setChatMessages(prev => [...prev, payload]);
+    });
+
+    channel.on('broadcast', { event: 'session_permissions' }, ({ payload }: any) => {
+      if (payload.sender !== currentUserId) {
+        setPermissions(payload.permissions);
+      }
+    });
+
     return () => {
       channel.unsubscribe();
       Object.values(peerConnections.current).forEach(pc => pc.close());
@@ -218,27 +228,6 @@ export const useWebRTC = (
 
   // Chat functionality through the same channel
   const [chatMessages, setChatMessages] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!channelRef.current) return;
-    
-    const chatHandler = channelRef.current.on('broadcast', { event: 'chat_message' }, ({ payload }: any) => {
-      setChatMessages(prev => [...prev, payload]);
-    });
-
-    const permHandler = channelRef.current.on('broadcast', { event: 'session_permissions' }, ({ payload }: any) => {
-      if (payload.sender !== currentUserId) {
-        setPermissions(payload.permissions);
-      }
-    });
-
-    return () => {
-      if (channelRef.current) {
-        channelRef.current.off('broadcast', chatHandler);
-        channelRef.current.off('broadcast', permHandler);
-      }
-    };
-  }, [channelRef.current]);
 
   const [permissions, setPermissions] = useState({
     canEditFrequencies: false,
