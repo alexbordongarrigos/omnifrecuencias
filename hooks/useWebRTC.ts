@@ -19,6 +19,13 @@ export const useWebRTC = (
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [participants, setParticipants] = useState<{id: string, displayName: string}[]>([]);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [permissions, setPermissions] = useState({
+    canEditFrequencies: false,
+    canUseMic: true,
+    canUseVideo: true,
+    canChat: true,
+  });
 
   const peerConnections = useRef<{ [key: string]: RTCPeerConnection }>({});
   const channelRef = useRef<any>(null);
@@ -227,14 +234,6 @@ export const useWebRTC = (
   };
 
   // Chat functionality through the same channel
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
-
-  const [permissions, setPermissions] = useState({
-    canEditFrequencies: false,
-    canUseMic: true,
-    canUseVideo: true,
-    canChat: true,
-  });
 
   const broadcastPermissions = (perms: any) => {
     if (!channelRef.current) return;
