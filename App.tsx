@@ -14,6 +14,7 @@ import FileExplorer from './components/FileExplorer';
 import StartLiveSessionModal from './components/StartLiveSessionModal';
 import LiveSyncCall from './components/LiveSyncCall';
 import Introduction from './components/Introduction';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { LiveSession, PresetContent } from './types';
 import { getCurrentStarseedUser, StarseedUser } from './services/starseedAuth';
 
@@ -506,26 +507,28 @@ const App: React.FC = () => {
       {activeSession && (
          <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-96 md:w-[400px] max-h-[80vh] flex flex-col pointer-events-none">
             <div className="pointer-events-auto shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-black/80 backdrop-blur-md">
-               <LiveSyncCall 
-                  session={activeSession} 
-                  currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
-                  onLeave={() => {
-                      setActiveSession(null);
-                      setSessionPermissions({
-                        canEditFrequencies: true,
-                        canUseMic: true,
-                        canUseVideo: true,
-                        canChat: true,
-                      });
-                  }} 
-                  currentOscillators={audio.oscillators}
-                  activeVizTab={activeVizTab}
-                  onSyncReceive={(oscillators, latencyMs, vizTab) => {
-                      audio.setAllOscillators(oscillators, latencyMs);
-                      if (vizTab) setActiveVizTab(vizTab);
-                  }}
-                  onPermissionsChange={setSessionPermissions}
-               />
+               <ErrorBoundary>
+                 <LiveSyncCall 
+                    session={activeSession} 
+                    currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
+                    onLeave={() => {
+                        setActiveSession(null);
+                        setSessionPermissions({
+                          canEditFrequencies: true,
+                          canUseMic: true,
+                          canUseVideo: true,
+                          canChat: true,
+                        });
+                    }} 
+                    currentOscillators={audio.oscillators}
+                    activeVizTab={activeVizTab}
+                    onSyncReceive={(oscillators, latencyMs, vizTab) => {
+                        audio.setAllOscillators(oscillators, latencyMs);
+                        if (vizTab) setActiveVizTab(vizTab);
+                    }}
+                    onPermissionsChange={setSessionPermissions}
+                 />
+               </ErrorBoundary>
             </div>
          </div>
       )}

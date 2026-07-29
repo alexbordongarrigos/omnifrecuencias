@@ -32,6 +32,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+  const [searchQuery, setSearchQuery] = useState('');
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
   
@@ -175,15 +176,24 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   };
 
   let filteredPresets = selectedCategory === 'all' ? presets : presets.filter(p => p.content?.category === selectedCategory);
+  if (searchQuery.trim()) {
+      filteredPresets = filteredPresets.filter(p => p.presetName.toLowerCase().includes(searchQuery.toLowerCase()) || p.hostName.toLowerCase().includes(searchQuery.toLowerCase()));
+  }
   if (sortBy === 'recent') filteredPresets.sort((a, b) => b.createdAt - a.createdAt);
   else if (sortBy === 'popular') filteredPresets.sort((a, b) => (b.content?.downloads || 0) - (a.content?.downloads || 0));
 
   let filteredSessions = selectedCategory === 'all' ? sessions : sessions.filter(s => s.presetContent?.category === selectedCategory);
+  if (searchQuery.trim()) {
+      filteredSessions = filteredSessions.filter(s => s.presetName.toLowerCase().includes(searchQuery.toLowerCase()) || s.hostName.toLowerCase().includes(searchQuery.toLowerCase()));
+  }
   let sortedSessions = [...filteredSessions];
   if (sortBy === 'recent') sortedSessions.sort((a, b) => b.createdAt - a.createdAt);
   else if (sortBy === 'popular') sortedSessions.sort((a, b) => (b.participantsCount || 0) - (a.participantsCount || 0));
 
   let sortedProfiles = [...profiles];
+  if (searchQuery.trim()) {
+      sortedProfiles = sortedProfiles.filter(p => p.displayName.toLowerCase().includes(searchQuery.toLowerCase()));
+  }
   if (sortBy === 'recent') sortedProfiles.sort((a, b) => b.lastActive - a.lastActive);
   else if (sortBy === 'popular') sortedProfiles.sort((a, b) => b.resonancesCount - a.resonancesCount);
 
@@ -257,6 +267,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
                 <input type="password" placeholder="Contraseña" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition-colors" value={password} onChange={e => setPassword(e.target.value)} />
               </div>
               {error && error !== 'force_login' && <p className="text-red-400 text-sm">{error}</p>}
+
               <div className="flex gap-3">
                  <button type="button" onClick={() => setError('')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">Cancelar</button>
                  <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">Conectar</button>
@@ -266,25 +277,40 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
         </div>
       )}
 
-      <div className="flex mb-6 bg-black/50 p-1 rounded-xl border border-white/5 shrink-0">
-        <button
-          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'vibras' ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
-          onClick={() => setActiveTab('vibras')}
-        >
-          <Icon name="Library" size={18} /> Partículas (Vibras)
-        </button>
-        <button
-          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'entonacion' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'}`}
-          onClick={() => setActiveTab('entonacion')}
-        >
-          <Icon name="Radio" size={18} /> Sincronización (En Vivo)
-        </button>
-        <button
-          className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'perfiles' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
-          onClick={() => setActiveTab('perfiles')}
-        >
-          <Icon name="Users" size={18} /> Perfiles
-        </button>
+      <div className="flex flex-col md:flex-row gap-4 mb-6 shrink-0 w-full justify-between items-start md:items-center">
+        <div className="flex bg-black/50 p-1 rounded-xl border border-white/5 shrink-0 w-full md:w-auto overflow-x-auto custom-scrollbar">
+          <button
+            className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'vibras' ? 'bg-cyan-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => setActiveTab('vibras')}
+          >
+            <Icon name="Library" size={18} /> Partículas
+          </button>
+          <button
+            className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'entonacion' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => setActiveTab('entonacion')}
+          >
+            <Icon name="Radio" size={18} /> Sincronización
+          </button>
+          <button
+            className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'perfiles' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => setActiveTab('perfiles')}
+          >
+            <Icon name="Users" size={18} /> Perfiles
+          </button>
+        </div>
+
+        <div className="relative w-full md:w-72">
+           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+             <Icon name="Search" size={16} className="text-slate-500" />
+           </div>
+           <input 
+              type="text" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar en la comunidad..."
+              className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/50 transition-colors placeholder:text-slate-500"
+           />
+        </div>
       </div>
 
       {activeTab === 'vibras' && (
@@ -474,9 +500,12 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
                    {user?.id === session.hostId && (
                      <div className="mb-4 flex gap-2">
                        <button className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold transition-colors"
-                         onClick={() => alert('Para terminar o traspasar esta sesión, únete a ella y usa las opciones de Host.')}
+                         onClick={() => {
+                             stopPreview();
+                             if (onJoinSession) onJoinSession(session);
+                         }}
                        >
-                         Administrar Sesión
+                         Entrar como Host
                        </button>
                      </div>
                    )}

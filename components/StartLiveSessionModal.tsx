@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Icon from './Icon';
-import { PresetContent } from '../types';
+import { PresetContent, CATEGORIES } from '../types';
 import { createLiveSession, getCurrentStarseedUser, StarseedUser } from '../services/starseedAuth';
 
 interface Props {
@@ -20,6 +20,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
   const [description, setDescription] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [category, setCategory] = useState(CATEGORIES[0]?.id || 'sueño');
   const [fixedPermissions, setFixedPermissions] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -46,6 +47,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
         description: description.trim() || undefined,
         cover_url: coverUrl.trim() || undefined,
         avatar_url: avatarUrl.trim() || undefined,
+        category,
         fixedPermissions
       };
 
@@ -113,6 +115,24 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors"
                 autoFocus
               />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Categoría</label>
+              <div className="relative">
+                <select
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors appearance-none cursor-pointer"
+                >
+                  {CATEGORIES.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400">
+                  <Icon name="ChevronDown" size={16} />
+                </div>
+              </div>
             </div>
             
             <div>

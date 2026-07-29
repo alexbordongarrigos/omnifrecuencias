@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/starseedAuth';
 import Icon from './Icon';
-import { OscillatorState, FileSystemNode, PresetContent } from '../types';
+import { OscillatorState, FileSystemNode, PresetContent, CATEGORIES } from '../types';
 import { StarseedUser } from '../services/starseedAuth';
 import FileExplorer from './FileExplorer';
 import { useFileSystem } from '../hooks/useFileSystem';
@@ -34,6 +34,7 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
   const [sourceMode, setSourceMode] = useState<'current' | 'library'>('current');
   const [selectedFileContent, setSelectedFileContent] = useState<PresetContent | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const [category, setCategory] = useState(CATEGORIES[0]?.id || 'sueño');
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,11 +73,11 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
           oscillators: dataToPublish,
           description: description.trim(),
           tags: ['omni', 'frecuencias'],
-          category: selectedFileContent?.category || 'synergy'
+          category: category
         },
         author_id: user.id,
         is_public: true,
-        category: selectedFileContent?.category || 'synergy'
+        category: category
       };
 
       const { error: dbError } = await supabase
@@ -166,6 +167,24 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors"
                 autoFocus
               />
+            </div>
+            
+            <div>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Categoría</label>
+              <div className="relative">
+                <select
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-cyan-500/50 transition-colors appearance-none cursor-pointer"
+                >
+                  {CATEGORIES.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400">
+                  <Icon name="ChevronDown" size={16} />
+                </div>
+              </div>
             </div>
             
             <div>
