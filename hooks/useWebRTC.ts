@@ -25,9 +25,9 @@ export const useWebRTC = (
 
   // Initialize Channel & WebRTC
   useEffect(() => {
-    if (!enabled || !sessionId || !currentUserId) return;
+    if (!enabled || !roomId || !currentUserId) return;
 
-    const channel = supabase.channel(`sync_room_${sessionId}`, {
+    const channel = supabase.channel(`sync_room_${roomId}`, {
       config: { broadcast: { self: false }, presence: { key: currentUserId } }
     });
 
@@ -110,7 +110,7 @@ export const useWebRTC = (
         localStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [sessionId, currentUserId]);
+  }, [roomId, currentUserId]);
 
   const createPeerConnection = (targetUserId: string, targetName: string) => {
     const pc = new RTCPeerConnection({

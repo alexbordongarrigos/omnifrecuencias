@@ -84,9 +84,9 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in-up">
+      <div className="bg-[#0f172a] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl animate-fade-in-up flex flex-col max-h-[90vh]">
         
-        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5 shrink-0">
           <h2 className="text-lg font-bold text-white flex items-center gap-2">
             <Icon name="Radio" size={18} className="text-fuchsia-400" />
             Transmitir Vibras (Red Híbrida)
@@ -96,7 +96,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
           </button>
         </div>
 
-        <form onSubmit={handleStart} className="p-6">
+        <form onSubmit={handleStart} className="p-6 overflow-y-auto custom-scrollbar">
           <p className="text-sm text-slate-400 mb-6">
             Configura los canales de transmisión cuántica. Puedes operar de manera híbrida o completamente off-grid.
           </p>

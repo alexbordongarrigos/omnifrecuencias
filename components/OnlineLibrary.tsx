@@ -178,7 +178,8 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   if (sortBy === 'recent') filteredPresets.sort((a, b) => b.createdAt - a.createdAt);
   else if (sortBy === 'popular') filteredPresets.sort((a, b) => (b.content?.downloads || 0) - (a.content?.downloads || 0));
 
-  let sortedSessions = [...sessions];
+  let filteredSessions = selectedCategory === 'all' ? sessions : sessions.filter(s => s.presetContent?.category === selectedCategory);
+  let sortedSessions = [...filteredSessions];
   if (sortBy === 'recent') sortedSessions.sort((a, b) => b.createdAt - a.createdAt);
   else if (sortBy === 'popular') sortedSessions.sort((a, b) => (b.participantsCount || 0) - (a.participantsCount || 0));
 
@@ -393,6 +394,22 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
             </div>
           </div>
 
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-2 custom-scrollbar">
+            {['all', ...Array.from(new Set(sessions.map(s => s.presetContent?.category || 'Varios'))).filter(c => c !== 'all').sort()].map(cat => {
+               const knownCat = CATEGORIES.find(c => c.id === cat);
+               const label = knownCat ? knownCat.label : (cat === 'all' ? 'Todas' : cat);
+               return (
+                 <button
+                   key={cat}
+                   onClick={() => setSelectedCategory(cat)}
+                   className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors border ${selectedCategory === cat ? 'bg-white/20 border-white/40 text-white' : 'bg-black/40 border-white/10 text-slate-400 hover:bg-white/10'}`}
+                 >
+                   {label}
+                 </button>
+               );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              {sortedSessions.map(session => (
                <div key={session.id} className="bg-gradient-to-br from-black/80 to-[#1e1a2d]/80 border border-purple-500/30 rounded-2xl hover:border-purple-400 transition-colors relative overflow-hidden group flex flex-col">
@@ -453,6 +470,16 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
                          <span className="flex items-center gap-1 text-amber-400" title="Host Persistente"><Icon name="Anchor" size={12} /> Fijo</span>
                      )}
                    </div>
+
+                   {user?.id === session.hostId && (
+                     <div className="mb-4 flex gap-2">
+                       <button className="flex-1 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg text-[10px] font-bold transition-colors"
+                         onClick={() => alert('Para terminar o traspasar esta sesión, únete a ella y usa las opciones de Host.')}
+                       >
+                         Administrar Sesión
+                       </button>
+                     </div>
+                   )}
 
                    <div className="flex gap-2 mt-auto">
                         <button 
