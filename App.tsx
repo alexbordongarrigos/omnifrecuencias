@@ -16,7 +16,7 @@ import LiveSyncCall from './components/LiveSyncCall';
 import Introduction from './components/Introduction';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LiveSession, PresetContent } from './types';
-import { getCurrentStarseedUser, StarseedUser } from './services/starseedAuth';
+import { getCurrentStarseedUser, StarseedUser, fetchLiveSessionById } from './services/starseedAuth';
 
 export interface SessionPermissions {
   canEditFrequencies: boolean;
@@ -161,6 +161,24 @@ const App: React.FC = () => {
 
   React.useEffect(() => {
     getCurrentStarseedUser().then(user => setCurrentUser(user));
+    
+    // Check for session invite link
+    const searchParams = new URLSearchParams(window.location.search);
+    const sessionId = searchParams.get('session');
+    if (sessionId) {
+       fetchLiveSessionById(sessionId).then(session => {
+          if (session) {
+             setActiveSession(session as LiveSession);
+             setViewMode('generator');
+             // Load the session preset automatically
+             audio.syncFromRemote(session.presetContent.oscillators);
+          } else {
+             console.error("Session not found or RLS blocked access.");
+          }
+       });
+       // Clear the URL so we don't keep rejoining on refresh
+       window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   // Handler to add from Library to Generator
@@ -465,7 +483,9 @@ const App: React.FC = () => {
                     setPresetToStart(preset);
                     setShowStartSessionModal(true);
                 }}
-                sessionPermissions={sessionPermissions}
+                sessionPermissions={activeSession && activeSession.hostId === currentUser?.id 
+                    ? { ...sessionPermissions, canEditFrequencies: true }
+                    : sessionPermissions}
             />
         )}
 
@@ -490,7 +510,7 @@ const App: React.FC = () => {
               onStartSessionRequest={() => {
                   setPresetToStart({
                     id: crypto.randomUUID(),
-                    name: 'Sincronización en Vivo',
+                    name: 'Sintonización en Vivo',
                     content: { oscillators: audio.oscillators }
                   } as any);
                   setShowStartSessionModal(true);
@@ -523,11 +543,13 @@ const App: React.FC = () => {
                     }} 
                     currentOscillators={audio.oscillators}
                     activeVizTab={activeVizTab}
-                    onSyncReceive={(oscillators, latencyMs, vizTab) => {
-                        audio.setAllOscillators(oscillators, latencyMs);
-                        if (vizTab) setActiveVizTab(vizTab);
+                    onSyncReceive={(oscillators, latency, vizTab) => {
+                        audio.syncFromRemote(oscillators);
+                        // NOTA: Ignoramos vizTab para desacoplar el visualizador. 
+                        // Cada usuario puede elegir su vista local.
                     }}
-                    onPermissionsChange={setSessionPermissions}
+                    onPermissionsChange={(perms) => setSessionPermissions(perms)}
+                    onEndSession={() => setActiveSession(null)}
                  />
                </ErrorBoundary>
             </div>

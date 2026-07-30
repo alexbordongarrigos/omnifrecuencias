@@ -56,6 +56,7 @@ const createShaperCurve = (crestValleyRatio: number = 1.0, dutyCycle: number = 0
 export const useAudio = () => {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
+  const masterFilterRef = useRef<BiquadFilterNode | null>(null);
   const masterAnalyserRef = useRef<AnalyserNode | null>(null);
   
   // New: Combined Bus for "Main Resonance" visualization/binaural calculation
@@ -68,6 +69,7 @@ export const useAudio = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [oscillators, setOscillators] = useState<OscillatorState[]>([]);
   const [masterVolume, setMasterVolume] = useState(1.0);
+  const [masterFilter, setMasterFilter] = useState({ type: 'allpass' as BiquadFilterType, frequency: 20000, Q: 1 });
   const [meshLatency, setMeshLatency] = useState(0);
 
   useEffect(() => {
@@ -127,6 +129,12 @@ export const useAudio = () => {
       // Master Output
       const masterGain = ctx.createGain();
       masterGain.gain.value = masterVolume; // Default master volume
+      
+      const masterFilter = ctx.createBiquadFilter();
+      masterFilter.type = 'allpass';
+      masterFilter.frequency.value = 20000;
+      masterFilter.Q.value = 1;
+      
       const masterAnalyser = ctx.createAnalyser();
       masterAnalyser.fftSize = 2048;
 
@@ -140,12 +148,14 @@ export const useAudio = () => {
       combinedGain.connect(combinedAnalyser);
       combinedAnalyser.connect(masterGain);
       
-      // 2. Master -> Speaker
-      masterGain.connect(masterAnalyser);
+      // 2. Master -> Filter -> Analyser -> Speaker
+      masterGain.connect(masterFilter);
+      masterFilter.connect(masterAnalyser);
       masterAnalyser.connect(ctx.destination);
 
       audioCtxRef.current = ctx;
       masterGainRef.current = masterGain;
+      masterFilterRef.current = masterFilter;
       masterAnalyserRef.current = masterAnalyser;
       combinedGainRef.current = combinedGain;
       combinedAnalyserRef.current = combinedAnalyser;
@@ -161,6 +171,7 @@ export const useAudio = () => {
         audioCtxRef.current = null;
       }
       masterGainRef.current = null;
+      masterFilterRef.current = null;
       masterAnalyserRef.current = null;
       combinedGainRef.current = null;
       combinedAnalyserRef.current = null;
@@ -174,6 +185,25 @@ export const useAudio = () => {
       masterGainRef.current.gain.cancelScheduledValues(audioCtxRef.current.currentTime);
       masterGainRef.current.gain.setTargetAtTime(vol, audioCtxRef.current.currentTime, 0.02);
     }
+  };
+
+  const updateMasterFilter = (config: { type?: BiquadFilterType; frequency?: number; Q?: number }) => {
+    setMasterFilter(prev => {
+      const next = { ...prev, ...config };
+      if (masterFilterRef.current && audioCtxRef.current) {
+        const t = audioCtxRef.current.currentTime;
+        if (config.type) masterFilterRef.current.type = config.type;
+        if (config.frequency !== undefined) {
+          masterFilterRef.current.frequency.cancelScheduledValues(t);
+          masterFilterRef.current.frequency.setTargetAtTime(config.frequency, t, 0.05);
+        }
+        if (config.Q !== undefined) {
+          masterFilterRef.current.Q.cancelScheduledValues(t);
+          masterFilterRef.current.Q.setTargetAtTime(config.Q, t, 0.05);
+        }
+      }
+      return next;
+    });
   };
 
   const toggleMasterPlay = async () => {
@@ -577,7 +607,9 @@ export const useAudio = () => {
     isPlaying,
     oscillators,
     masterVolume,
+    masterFilter,
     updateMasterVolume,
+    updateMasterFilter,
     toggleMasterPlay,
     addOscillator,
     removeOscillator,

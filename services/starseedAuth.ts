@@ -165,6 +165,38 @@ export const createLiveSession = async (
   };
 };
 
+export const fetchLiveSessionById = async (sessionId: string) => {
+  const { data, error } = await supabase
+    .from('omni_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .single();
+
+  if (error || !data) {
+    console.error("Error fetching live session by ID:", error);
+    return null;
+  }
+
+  const row = data;
+  const parsedContent = row.preset_content as any;
+  const meta = parsedContent.sessionMetadata || {};
+
+  return {
+    id: row.id,
+    hostId: row.host_id,
+    hostName: row.host_name,
+    presetName: row.preset_name,
+    presetContent: parsedContent,
+    isPublic: row.is_public,
+    allowOpenModifications: row.allow_open_modifications,
+    createdAt: new Date(row.created_at).getTime(),
+    description: meta.description,
+    cover_url: meta.cover_url,
+    avatar_url: meta.avatar_url,
+    fixedPermissions: meta.fixedPermissions
+  };
+};
+
 export const fetchLiveSessions = async () => {
   const { data, error } = await supabase
     .from('omni_sessions')

@@ -65,19 +65,37 @@ class MeshNetworkManager {
 
     try {
       this.setState('connecting');
-      // Pide al usuario seleccionar la antena
-      this.port = await navigator.serial.requestPort({
-        filters: [
-          { usbVendorId: 0x10c4 }, // Silabs (e.g. CP210x, LILYGO T-Beam)
-          { usbVendorId: 0x1a86 }  // CH340 (e.g. Heltec)
-        ]
-      });
+      // Pide al usuario seleccionar la antena (sin filtros para permitir cualquier dispositivo USB/Serial)
+      this.port = await navigator.serial.requestPort();
 
       await this.port.open({ baudRate: 115200 });
       this.setState('connected');
       this.startReading();
     } catch (err) {
       console.error("Error conectando al nodo Meshtastic:", err);
+      this.setState('error');
+    }
+  }
+
+  /**
+   * Intenta conectarse silenciosamente a un puerto ya autorizado.
+   */
+  public async autoConnect() {
+    if (!('serial' in navigator)) return;
+
+    try {
+      const ports = await navigator.serial.getPorts();
+      if (ports.length > 0) {
+        // Tomamos el primer puerto autorizado
+        this.port = ports[0];
+        this.setState('connecting');
+        await this.port.open({ baudRate: 115200 });
+        this.setState('connected');
+        this.startReading();
+        console.log("Conectado automáticamente a antena Mesh P2P.");
+      }
+    } catch (err) {
+      console.error("Error en autoConnect a Mesh:", err);
       this.setState('error');
     }
   }

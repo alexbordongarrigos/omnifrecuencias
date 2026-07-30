@@ -7,6 +7,11 @@ export const useMeshSync = (onDataReceive?: (data: any) => void) => {
   const [latencyDelta, setLatencyDelta] = useState<number>(0);
 
   useEffect(() => {
+    // Intentar conectar automáticamente (silenciosamente)
+    if (meshNetwork.state === 'disconnected') {
+      meshNetwork.autoConnect();
+    }
+
     let unsubData: (() => void) | undefined;
     if (onDataReceive) {
       unsubData = meshNetwork.onDataReceive(onDataReceive);

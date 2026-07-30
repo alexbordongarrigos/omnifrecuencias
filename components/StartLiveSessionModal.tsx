@@ -13,8 +13,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
   const [presetName, setPresetName] = useState('Sesión de Entonación');
   const [isPublic, setIsPublic] = useState(true);
   const [allowOpenModifications, setAllowOpenModifications] = useState(false);
-  const [useGlobalWebRTC, setUseGlobalWebRTC] = useState(true);
-  const [useLocalMesh, setUseLocalMesh] = useState(true);
+  const [networkMode, setNetworkMode] = useState<'mixed' | 'mesh' | 'server'>('mixed');
   
   // New Metadata fields
   const [description, setDescription] = useState('');
@@ -32,14 +31,12 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
     setError('');
     try {
       const user = await getCurrentStarseedUser();
+      const useGlobalWebRTC = networkMode === 'mixed' || networkMode === 'server';
+      const useLocalMesh = networkMode === 'mixed' || networkMode === 'mesh';
+      
       if (!user && useGlobalWebRTC) {
         throw new Error("Debes iniciar sesión con Starseed OS para transmitir en la red global.");
-      }
-      
-      if (!useGlobalWebRTC && !useLocalMesh) {
-         throw new Error("Debes seleccionar al menos un modo de transmisión (Global o Mesh Local).");
-      }
-      
+      }      
       let session = null;
       
       // Metadata payload
@@ -77,7 +74,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
           };
       }
       
-      onSessionStarted({ ...session, useGlobalWebRTC, useLocalMesh });
+      onSessionStarted({ ...session, useGlobalWebRTC, useLocalMesh, networkMode });
     } catch (err: any) {
       setError(err.message || "Error al iniciar sesión.");
     }
@@ -140,7 +137,7 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
               <textarea
                 value={description}
                 onChange={e => setDescription(e.target.value)}
-                placeholder="Describe el propósito de esta sincronización..."
+                placeholder="Describe el propósito de esta sintonización..."
                 className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-fuchsia-500/50 transition-colors h-20 resize-none custom-scrollbar text-sm"
               />
             </div>
@@ -178,7 +175,11 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
               />
               <label htmlFor="isPublic" className="flex-1 cursor-pointer">
                 <span className="block text-sm font-bold text-white">Sesión Pública</span>
-                <span className="block text-xs text-slate-400">Aparecerá en la pestaña "Entonación" para toda la comunidad.</span>
+                <span className="block text-xs text-slate-400">
+                  {isPublic 
+                    ? 'Aparecerá en la pestaña "Entonación" para toda la comunidad.' 
+                    : 'Será PRIVADA. Sólo podrán unirse los usuarios que reciban tu Enlace de Invitación (podrás copiarlo al iniciar la sesión).'}
+                </span>
               </label>
             </div>
 
@@ -212,54 +213,36 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
 
           <div className="pt-2 border-t border-white/10 mt-4">
              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Topología de Red</label>
-              
-              <div className="space-y-3">
-                {/* Global WebRTC Option */}
-                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${useGlobalWebRTC ? 'border-cyan-500/50 bg-cyan-500/5' : 'border-white/10 bg-black/30 hover:border-white/20'}`}>
-                  <div className="mt-0.5">
-                    <input 
-                      type="checkbox" 
-                      checked={useGlobalWebRTC}
-                      onChange={(e) => setUseGlobalWebRTC(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-cyan-500 focus:ring-cyan-500 focus:ring-offset-gray-800"
-                    />
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <label className={`cursor-pointer border rounded-xl p-3 flex flex-col gap-1 transition-all ${networkMode === 'mixed' ? 'bg-cyan-500/20 border-cyan-500 text-white' : 'bg-black/30 border-white/10 text-slate-400 hover:border-white/30'}`}>
+                  <input type="radio" name="networkMode" value="mixed" checked={networkMode === 'mixed'} onChange={() => setNetworkMode('mixed')} className="hidden" />
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    <Icon name="Globe" size={14} className={networkMode === 'mixed' ? 'text-cyan-400' : 'text-slate-500'} />
+                    Mixto (Global + Mesh)
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-sm text-white flex items-center gap-2">
-                      <Icon name="Globe" size={14} className={useGlobalWebRTC ? 'text-cyan-400' : 'text-slate-500'} />
-                      Red Global (Internet / WebRTC)
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">Conecta con usuarios de todo el mundo mediante los servidores centrales de Starseed OS. Requiere conexión a internet.</div>
-                  </div>
+                  <div className="text-xs opacity-70">Transmite por internet y antena P2P simultáneamente.</div>
                 </label>
 
-                {/* Local Mesh Option */}
-                <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${useLocalMesh ? 'border-green-500/50 bg-green-500/5' : 'border-white/10 bg-black/30 hover:border-white/20'}`}>
-                  <div className="mt-0.5">
-                    <input 
-                      type="checkbox" 
-                      checked={useLocalMesh}
-                      onChange={(e) => setUseLocalMesh(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-500 focus:ring-green-500 focus:ring-offset-gray-800"
-                    />
+                <label className={`cursor-pointer border rounded-xl p-3 flex flex-col gap-1 transition-all ${networkMode === 'mesh' ? 'bg-green-500/20 border-green-500 text-white' : 'bg-black/30 border-white/10 text-slate-400 hover:border-white/30'}`}>
+                  <input type="radio" name="networkMode" value="mesh" checked={networkMode === 'mesh'} onChange={() => setNetworkMode('mesh')} className="hidden" />
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    <Icon name="RadioReceiver" size={14} className={networkMode === 'mesh' ? 'text-green-400' : 'text-slate-500'} />
+                    Solo Mesh Local
                   </div>
-                  <div className="flex-1">
-                    <div className="font-bold text-sm text-white flex items-center gap-2">
-                      <Icon name="RadioReceiver" size={14} className={useLocalMesh ? 'text-green-400' : 'text-slate-500'} />
-                      Mesh P2P Local (Antena Meshtastic)
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">Detecta nodos físicos en tu área para sincronización de ultra-baja latencia sin necesidad de internet (Off-grid).</div>
+                  <div className="text-xs opacity-70">Desconectado de internet. Solo dispositivos de radio locales.</div>
+                </label>
+
+                <label className={`cursor-pointer border rounded-xl p-3 flex flex-col gap-1 transition-all ${networkMode === 'server' ? 'bg-purple-500/20 border-purple-500 text-white' : 'bg-black/30 border-white/10 text-slate-400 hover:border-white/30'}`}>
+                  <input type="radio" name="networkMode" value="server" checked={networkMode === 'server'} onChange={() => setNetworkMode('server')} className="hidden" />
+                  <div className="font-bold text-sm flex items-center gap-2">
+                    <Icon name="Server" size={14} className={networkMode === 'server' ? 'text-purple-400' : 'text-slate-500'} />
+                    Solo Servidor
                   </div>
+                  <div className="text-xs opacity-70">Solo a través de internet (WebRTC).</div>
                 </label>
               </div>
-              {!useGlobalWebRTC && !useLocalMesh && (
-                <div className="mt-3 text-xs text-red-400 flex items-center gap-1">
-                  <Icon name="AlertTriangle" size={12} />
-                  Debes seleccionar al menos un canal de transmisión.
-                </div>
-              )}
-            </div>
           </div>
+        </div>
 
           {error && <p className="text-red-400 text-sm font-bold text-center mb-4">{error}</p>}
 
@@ -273,15 +256,15 @@ const StartLiveSessionModal: React.FC<Props> = ({ preset, onClose, onSessionStar
             </button>
             <button
               type="submit"
-              disabled={loading || (!useGlobalWebRTC && !useLocalMesh)}
+              disabled={loading}
               className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-600 to-purple-600 text-white font-bold hover:from-fuchsia-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(192,38,211,0.3)] flex justify-center items-center gap-2"
             >
               {loading ? (
                 <Icon name="Loader" className="animate-spin" />
               ) : (
                 <>
-                  <Icon name="Radio" size={16} className={(!useGlobalWebRTC && !useLocalMesh) ? '' : 'animate-pulse'} />
-                  Iniciar Sincronización
+                  <Icon name="Radio" size={16} className={networkMode !== 'mesh' ? 'animate-pulse' : ''} />
+                  Iniciar Sintonización
                 </>
               )}
             </button>

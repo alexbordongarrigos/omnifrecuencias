@@ -31,7 +31,17 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [sortBy, setSortBy] = useState<'recent' | 'popular'>('recent');
+  const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'category'>('recent');
+  
+  // Local storage for global network preference
+  const [networkPreference, setNetworkPreference] = useState<'mixed' | 'mesh' | 'server' | 'private'>(
+    (localStorage.getItem('globalNetworkPreference') as any) || 'mixed'
+  );
+
+  const handleNetworkPrefChange = (pref: 'mixed' | 'mesh' | 'server' | 'private') => {
+    setNetworkPreference(pref);
+    localStorage.setItem('globalNetworkPreference', pref);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [previewingId, setPreviewingId] = useState<string | null>(null);
@@ -224,9 +234,25 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
                 <p className="text-xs text-amber-400 font-bold">Conectado a Starseed OS</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors flex items-center gap-2">
-              <Icon name="LogOut" size={16} /> Salir
-            </button>
+            <div className="flex flex-col gap-2">
+              <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors flex items-center gap-2">
+                <Icon name="LogOut" size={16} /> Salir
+              </button>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <Icon name="Wifi" size={14} className="text-slate-400" />
+                <select 
+                  value={networkPreference} 
+                  onChange={(e) => handleNetworkPrefChange(e.target.value as any)}
+                  className="bg-black/50 border border-white/10 rounded-lg text-xs text-slate-300 p-1.5 focus:outline-none focus:border-cyan-500/50"
+                >
+                  <option value="mixed">Conexión: Mixta (Internet + Mesh)</option>
+                  <option value="mesh">Conexión: Solo Mesh Local</option>
+                  <option value="server">Conexión: Solo Servidores Públicos</option>
+                  <option value="private">Conexión: Privada</option>
+                </select>
+              </div>
+            </div>
           </>
         ) : (
           <>
@@ -290,7 +316,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
             className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'entonacion' ? 'bg-purple-500 text-white' : 'text-slate-400 hover:text-white'}`}
             onClick={() => setActiveTab('entonacion')}
           >
-            <Icon name="Radio" size={18} /> Sincronización
+            <Icon name="Radio" size={18} /> Sintonización
           </button>
           <button
             className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'perfiles' ? 'bg-amber-500 text-black' : 'text-slate-400 hover:text-white'}`}
@@ -405,7 +431,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-2">
             <h2 className="text-xl font-bold flex items-center gap-2 text-purple-300">
-              <Icon name="Radio" size={24} /> Sincronizaciones Cuánticas
+              <Icon name="Radio" size={24} /> Sintonizaciones Cuánticas
             </h2>
             <div className="flex flex-wrap gap-2 items-center">
                <div className="flex bg-black/40 border border-white/10 rounded-lg p-1 mr-2">
@@ -536,7 +562,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
              {sortedSessions.length === 0 && (
                <div className="col-span-full py-16 text-center text-slate-500 border border-dashed border-white/10 rounded-2xl">
                  <Icon name="MicOff" size={32} className="mx-auto mb-3 opacity-40" />
-                 <p className="mb-1 text-white/70">No hay sincronizaciones activas.</p>
+                 <p className="mb-1 text-white/70">No hay sintonizaciones activas.</p>
                  <p className="text-xs">Inicia una sesión local y transmite al universo cuántico.</p>
                </div>
              )}

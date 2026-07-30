@@ -186,6 +186,20 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
                 <span>Banda Inteligente: {meshState === 'connected' ? 'Híbrida (Mesh + Server)' : 'Servidor WebRTC'}</span>
                 <span className="ml-auto text-amber-500/80">Δ {Math.round(latencyDelta)}ms de desfase neuronal</span>
               </div>
+              
+              <div className="flex mt-1">
+                 <button 
+                    onClick={() => {
+                       const link = `${window.location.origin}${window.location.pathname}?session=${session.id}`;
+                       navigator.clipboard.writeText(link);
+                       // Optional: could show a small toast here
+                    }}
+                    className="flex items-center gap-2 bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded text-[10px] uppercase font-bold text-slate-300 transition-colors border border-white/10 w-full justify-center"
+                 >
+                    <Icon name="Link" size={12} />
+                    Copiar Enlace de Invitación
+                 </button>
+              </div>
             </div>
           </div>
         </div>
@@ -204,39 +218,56 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
 
       {/* Host Dashboard Panel */}
       {isHost && showHostPanel && (
-        <div className="bg-black/60 border border-purple-500/30 rounded-xl p-3 mb-2 animate-fade-in flex flex-col gap-2">
-          <div className="text-[10px] uppercase font-bold text-purple-400 tracking-widest flex items-center gap-1 mb-1">
-            <Icon name="Settings" size={10} />
-            Privilegios de la Sesión
+        <div className="bg-black/80 backdrop-blur-md border border-purple-500/50 rounded-2xl p-4 mb-3 animate-fade-in flex flex-col gap-3 shadow-[0_0_30px_rgba(168,85,247,0.15)] relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent pointer-events-none"></div>
+          
+          <div className="text-[10px] uppercase font-bold text-purple-300 tracking-widest flex items-center gap-1 border-b border-white/10 pb-2 relative z-10">
+            <Icon name="Settings" size={12} />
+            Administración y Permisos
           </div>
           
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={activePermissions.canEditFrequencies}
-              onChange={e => updateHostPermissions({ canEditFrequencies: e.target.checked })}
-              className="accent-purple-500"
-            />
-            Permitir a otros modificar frecuencias y gráficas
-          </label>
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={activePermissions.canUseMic}
-              onChange={e => updateHostPermissions({ canUseMic: e.target.checked })}
-              className="accent-purple-500"
-            />
-            Permitir micrófonos
-          </label>
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-            <input 
-              type="checkbox" 
-              checked={activePermissions.canUseVideo}
-              onChange={e => updateHostPermissions({ canUseVideo: e.target.checked })}
-              className="accent-purple-500"
-            />
-            Permitir cámaras
-          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10">
+            {/* Privilegios */}
+            <div className="flex flex-col gap-2">
+              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500">Privilegios Globales</span>
+              <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                <span className="text-[10px] text-slate-300">Modificar Frecuencias</span>
+                <input type="checkbox" checked={activePermissions.canEditFrequencies} onChange={e => updateHostPermissions({ canEditFrequencies: e.target.checked })} className="accent-purple-500 w-3 h-3" />
+              </label>
+              <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                <span className="text-[10px] text-slate-300">Uso de Micrófono</span>
+                <input type="checkbox" checked={activePermissions.canUseMic} onChange={e => updateHostPermissions({ canUseMic: e.target.checked })} className="accent-purple-500 w-3 h-3" />
+              </label>
+              <label className="flex items-center justify-between p-2 rounded-xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+                <span className="text-[10px] text-slate-300">Uso de Cámara</span>
+                <input type="checkbox" checked={activePermissions.canUseVideo} onChange={e => updateHostPermissions({ canUseVideo: e.target.checked })} className="accent-purple-500 w-3 h-3" />
+              </label>
+            </div>
+            
+            {/* Acceso Privado */}
+            <div className="flex flex-col gap-2">
+              <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500">Control de Acceso</span>
+              <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-purple-300 font-bold">Modo Privado</span>
+                  <input type="checkbox" checked={!session.isPublic} readOnly className="accent-purple-500 w-3 h-3 opacity-50" title="Definido en la creación de sesión" />
+                </div>
+                {!session.isPublic && (
+                  <div className="mt-2">
+                    <span className="text-[9px] text-slate-400 block mb-1">Cuentas Autorizadas (IDs):</span>
+                    <textarea 
+                      placeholder="email@... o ID de usuario"
+                      className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-[10px] text-white focus:border-purple-500 outline-none resize-none h-12"
+                    ></textarea>
+                    <span className="text-[8px] text-slate-500 mt-1 block">Solo estas cuentas podrán decodificar la transmisión Mesh o WebRTC.</span>
+                  </div>
+                )}
+                {session.isPublic && (
+                  <span className="text-[9px] text-slate-400 block">La sesión es pública para toda la red. Para restringir acceso, debiste desmarcar "Sesión Pública" al iniciar.</span>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
         
@@ -281,37 +312,47 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
       )}
 
       {/* Bottom Controls */}
-      <div className="flex items-center justify-between mt-2">
-        <div className="flex gap-2">
+      <div className="flex items-center justify-between mt-3 bg-black/40 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-lg">
+        <div className="flex gap-1.5 md:gap-3">
           <button 
             onClick={toggleAudio}
             disabled={!activePermissions.canUseMic && !isHost}
-            className={`p-2 rounded-full transition-all ${!activePermissions.canUseMic && !isHost ? 'opacity-50 cursor-not-allowed bg-slate-800' : isAudioEnabled ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50'}`}
+            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 shadow-inner ${!activePermissions.canUseMic && !isHost ? 'opacity-50 cursor-not-allowed bg-slate-800 border border-transparent' : isAudioEnabled ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]'}`}
+            title={isAudioEnabled ? "Apagar Micrófono" : "Encender Micrófono"}
           >
-            <Icon name={isAudioEnabled ? "Mic" : "MicOff"} size={14} />
+            <Icon name={isAudioEnabled ? "Mic" : "MicOff"} size={18} />
           </button>
           
           <button 
             onClick={toggleVideo}
             disabled={!activePermissions.canUseVideo && !isHost}
-            className={`p-2 rounded-full transition-all ${!activePermissions.canUseVideo && !isHost ? 'opacity-50 cursor-not-allowed bg-slate-800' : isVideoEnabled ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500/20 text-red-400 hover:bg-red-500/40 border border-red-500/50'}`}
+            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 shadow-inner ${!activePermissions.canUseVideo && !isHost ? 'opacity-50 cursor-not-allowed bg-slate-800 border border-transparent' : isVideoEnabled ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/30 hover:shadow-[0_0_15px_rgba(34,211,238,0.3)]' : 'bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]'}`}
+            title={isVideoEnabled ? "Apagar Cámara" : "Encender Cámara"}
           >
-            <Icon name={isVideoEnabled ? "Video" : "VideoOff"} size={14} />
+            <Icon name={isVideoEnabled ? "Video" : "VideoOff"} size={18} />
           </button>
+
+          <div className="w-px h-8 bg-white/10 self-center mx-1 md:mx-2"></div>
 
           <button 
             onClick={() => setShowChat(!showChat)}
-            className={`p-2 rounded-full transition-all ${showChat ? 'bg-cyan-500/30 text-cyan-300' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+            className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl transition-all duration-300 shadow-inner border ${showChat ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.3)]' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'}`}
+            title="Abrir Chat"
           >
-            <Icon name="MessageSquare" size={14} />
+            <Icon name="MessageSquare" size={18} />
+            {chatMessages.length > 0 && !showChat && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-purple-500 rounded-full animate-ping"></span>
+            )}
           </button>
         </div>
 
         <button 
           onClick={() => isHost ? setShowExitModal(true) : onLeave()} 
-          className="bg-red-500/20 hover:bg-red-500/40 text-red-400 border border-red-500/50 rounded-lg px-3 py-1 font-bold text-[10px] uppercase tracking-wider transition-colors shadow-[0_0_10px_rgba(239,68,68,0.2)]"
+          className="group relative flex items-center gap-2 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 rounded-xl px-4 h-10 md:h-12 font-bold text-[10px] md:text-xs uppercase tracking-wider transition-all duration-300 overflow-hidden"
         >
-          Desconectar
+          <div className="absolute inset-0 bg-gradient-to-r from-red-600 to-red-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+          <Icon name="LogOut" size={14} className="relative z-10" />
+          <span className="relative z-10 hidden sm:inline">Desconectar</span>
         </button>
       </div>
 
@@ -331,7 +372,7 @@ const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentO
                 className="w-full text-left px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl border border-red-500/20 flex flex-col gap-1 transition-colors"
               >
                 <span className="font-bold flex items-center gap-2"><Icon name="XCircle" size={14} /> Terminar para todos</span>
-                <span className="text-[10px] text-slate-500">Cierra la sala y desconecta la sincronización en la red.</span>
+                <span className="text-[10px] text-slate-500">Cierra la sala y desconecta la sintonización en la red.</span>
               </button>
               
               <button 
