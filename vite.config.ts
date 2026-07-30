@@ -20,9 +20,9 @@ export default defineConfig(({ mode }) => {
           injectRegister: 'auto',
           includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
           manifest: {
-            name: 'OmniFrequency',
+            name: 'OmniFrequency v2',
             short_name: 'OmniFreq',
-            description: 'Generador de resonancias y frecuencias maestras',
+            description: 'Generador de resonancias y frecuencias maestras (Actualizado)',
             theme_color: '#030712',
             background_color: '#030712',
             display: 'standalone',
