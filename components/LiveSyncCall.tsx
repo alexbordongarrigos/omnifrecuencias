@@ -41,7 +41,7 @@ const VideoPlayer: React.FC<{ stream: MediaStream; isLocal?: boolean; displayNam
 };
 
 const LiveSyncCall: React.FC<Props> = ({ session, currentUser, onLeave, currentOscillators, activeVizTab, onSyncReceive, onPermissionsChange }) => {
-  const isHost = session.hostId === currentUser.id;
+  const isHost = session.hostId === currentUser.id || (session.hostId === 'local-host' && currentUser.id === 'anonymous');
   const lastSentState = useRef<string>('');
   const [showHostPanel, setShowHostPanel] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);

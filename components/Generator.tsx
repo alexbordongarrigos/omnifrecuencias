@@ -356,25 +356,22 @@ const Generator: React.FC<Props> = ({ audio, isMasterPlaying, onStartLiveSession
                 {/* 2D / 3D Cymatics Selector Tabs */}
                 <div className="grid grid-cols-3 sm:flex items-center gap-1 sm:gap-2 bg-black/50 p-1 rounded-xl border border-white/10 w-full lg:w-fit">
                 <button
-                  onClick={() => canEdit && onVizTabChange && onVizTabChange('2d')}
-                  disabled={!canEdit}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '2d' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== '2d' && 'opacity-50 cursor-not-allowed'}`}
+                  onClick={() => onVizTabChange && onVizTabChange('2d')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '2d' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]' : 'text-slate-400 hover:bg-white/5'}`}
                 >
                   <Icon name="Activity" size={14} />
                   Ondas
                 </button>
                 <button
-                  onClick={() => canEdit && onVizTabChange && onVizTabChange('3d')}
-                  disabled={!canEdit}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '3d' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== '3d' && 'opacity-50 cursor-not-allowed'}`}
+                  onClick={() => onVizTabChange && onVizTabChange('3d')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === '3d' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]' : 'text-slate-400 hover:bg-white/5'}`}
                 >
                   <Icon name="Hexagon" size={14} />
                   Cimática 3D
                 </button>
                  <button
-                  onClick={() => canEdit && onVizTabChange && onVizTabChange('spiral')}
-                  disabled={!canEdit}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === 'spiral' ? 'bg-pink-500/20 text-pink-300 border border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.2)]' : 'text-slate-400 hover:bg-white/5'} ${!canEdit && activeVizTab !== 'spiral' && 'opacity-50 cursor-not-allowed'}`}
+                  onClick={() => onVizTabChange && onVizTabChange('spiral')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeVizTab === 'spiral' ? 'bg-pink-500/20 text-pink-300 border border-pink-500/50 shadow-[0_0_10px_rgba(236,72,153,0.2)]' : 'text-slate-400 hover:bg-white/5'}`}
                 >
                     <Icon name="Aperture" size={14} />
                     Espiral

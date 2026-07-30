@@ -483,7 +483,7 @@ const App: React.FC = () => {
                     setPresetToStart(preset);
                     setShowStartSessionModal(true);
                 }}
-                sessionPermissions={activeSession && activeSession.hostId === currentUser?.id 
+                sessionPermissions={activeSession && (activeSession.hostId === currentUser?.id || (!currentUser && activeSession.hostId === 'local-host'))
                     ? { ...sessionPermissions, canEditFrequencies: true }
                     : sessionPermissions}
             />
