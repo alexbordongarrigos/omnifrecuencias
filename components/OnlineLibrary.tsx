@@ -28,6 +28,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const [resonancesCache, setResonancesCache] = useState<Record<string, boolean>>({});
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -113,11 +114,16 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
     setLoading(true);
     setError('');
     try {
-      const loggedUser = await loginWithStarseed(email, password);
+      let loggedUser;
+      if (isRegistering) {
+        loggedUser = await signUpWithStarseed(email, password, email.split('@')[0]);
+      } else {
+        loggedUser = await loginWithStarseed(email, password);
+      }
       setUser(loggedUser);
       await loadData();
     } catch (err: any) {
-      setError(err.message || 'Error al iniciar sesión');
+      setError(err.message || 'Error de autenticación');
     }
     setLoading(false);
   };
@@ -295,9 +301,16 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
               </div>
               {error && error !== 'force_login' && <p className="text-red-400 text-sm">{error}</p>}
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 mt-4">
                  <button type="button" onClick={() => setError('')} className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-3 rounded-xl transition-colors border border-white/10">Cancelar</button>
-                 <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">Conectar</button>
+                 <button type="submit" className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold py-3 rounded-xl transition-colors shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                   {isRegistering ? "Crear Cuenta" : "Conectar"}
+                 </button>
+              </div>
+              <div className="text-center mt-4">
+                 <button type="button" onClick={() => setIsRegistering(!isRegistering)} className="text-xs text-amber-400 hover:text-amber-300 underline">
+                   {isRegistering ? "¿Ya tienes cuenta? Inicia sesión aquí" : "¿No tienes cuenta? Regístrate aquí"}
+                 </button>
               </div>
             </form>
           </div>

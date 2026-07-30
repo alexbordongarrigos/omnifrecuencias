@@ -42,6 +42,41 @@ export const loginWithStarseed = async (email: string, password: string): Promis
   };
 };
 
+export const signUpWithStarseed = async (email: string, password: string, displayName: string = 'Starseed Explorer'): Promise<StarseedUser | null> => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: displayName
+      }
+    }
+  });
+
+  if (error || !data.user) {
+    console.error("Starseed OS SignUp Error:", error?.message);
+    throw new Error(error?.message || "Registro fallido");
+  }
+
+  // Ensure os_profile exists
+  const { error: profileError } = await supabase
+    .from('os_profiles')
+    .insert({
+      user_id: data.user.id,
+      display_name: displayName
+    });
+    
+  if (profileError) {
+    console.error("Error creating profile:", profileError);
+  }
+
+  return {
+    id: data.user.id,
+    email: data.user.email || '',
+    displayName: displayName,
+  };
+};
+
 export const logoutStarseed = async () => {
   await supabase.auth.signOut();
 };
