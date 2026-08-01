@@ -573,10 +573,10 @@ const LiveSyncCall: React.FC<Props> = ({
   }
 
   // -------------------------------------------------------------
-  // COMPACT FLOATING WIDGET VIEW (WIDGET COMPACTO DE ESQUINA)
+  // COMPACT FLOATING WIDGET VIEW (WIDGET COMPACTO ANCLADO)
   // -------------------------------------------------------------
   return (
-    <div className="flex flex-col gap-3 p-4 bg-black/90 backdrop-blur-2xl border border-cyan-500/40 rounded-3xl shadow-[0_10px_50px_rgba(0,0,0,0.9)] animate-fade-in w-full max-w-sm">
+    <div className="fixed bottom-24 right-4 z-[90] w-[calc(100vw-2rem)] sm:w-80 md:w-96 flex flex-col gap-3 p-4 bg-black/95 backdrop-blur-2xl border border-cyan-500/50 rounded-3xl shadow-[0_0_40px_rgba(34,211,238,0.35)] animate-fade-in">
       <div className="flex items-center justify-between border-b border-white/10 pb-2">
         <div className="flex items-center gap-2 truncate">
           <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0" />
@@ -585,10 +585,11 @@ const LiveSyncCall: React.FC<Props> = ({
         
         <button
           onClick={() => setViewMode('studio')}
-          className="p-1.5 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black rounded-lg text-xs font-bold transition-all flex items-center gap-1 border border-cyan-500/40"
-          title="Expandir Estudio"
+          className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-cyan-500/40 shadow-[0_0_12px_rgba(34,211,238,0.3)]"
+          title="Expandir a Estudio Completo"
         >
           <Icon name="Maximize2" size={14} />
+          <span>Estudio</span>
         </button>
       </div>
 
