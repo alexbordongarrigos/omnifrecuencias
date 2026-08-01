@@ -72,9 +72,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
     const init = async () => {
       const currentUser = await getCurrentStarseedUser();
       setUser(currentUser);
-      if (currentUser) {
-        await loadData();
-      }
+      await loadData();
       setLoading(false);
     };
     init();
@@ -131,8 +129,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const handleLogout = async () => {
     await logoutStarseed();
     setUser(null);
-    setPresets([]);
-    setSessions([]);
+    await loadData();
   };
 
   if (loading) {
@@ -219,7 +216,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
       {/* Conditionally render login modal if user clicked something requiring auth and is not logged in, or if explicitly opened. For now we use the error state hack to open it or we can just render it. Let's use a state `showLoginModal`. */}
       {/* Wait, we don't have showLoginModal state, let's just render the Login form inline if they want to login via header. */}
       
-      <div className="relative flex justify-between items-center mb-6 border border-white/5 p-4 rounded-2xl backdrop-blur-md shrink-0 overflow-hidden">
+      <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border border-white/5 p-4 rounded-2xl backdrop-blur-md shrink-0 overflow-hidden">
         {user?.cover_url && (
            <img src={user.cover_url} alt="Cover" className="absolute inset-0 w-full h-full object-cover opacity-40 pointer-events-none mix-blend-screen" />
         )}
@@ -240,43 +237,55 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
                 <p className="text-xs text-amber-400 font-bold">Conectado a Starseed OS</p>
               </div>
             </div>
-            <div className="flex flex-col gap-2">
-              <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition-colors flex items-center gap-2">
-                <Icon name="LogOut" size={16} /> Salir
-              </button>
-              
-              <div className="flex items-center gap-2 mt-2">
-                <Icon name="Wifi" size={14} className="text-slate-400" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative z-10">
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                <Icon name="Wifi" size={14} className="text-cyan-400" />
                 <select 
                   value={networkPreference} 
                   onChange={(e) => handleNetworkPrefChange(e.target.value as any)}
-                  className="bg-black/50 border border-white/10 rounded-lg text-xs text-slate-300 p-1.5 focus:outline-none focus:border-cyan-500/50"
+                  className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none cursor-pointer"
                 >
-                  <option value="mixed">Conexión: Mixta (Internet + Mesh)</option>
-                  <option value="mesh">Conexión: Solo Mesh Local</option>
-                  <option value="server">Conexión: Solo Servidores Públicos</option>
-                  <option value="private">Conexión: Privada</option>
+                  <option value="mixed" className="bg-slate-900 text-white">Conexión: Mixta (Internet + Mesh)</option>
+                  <option value="mesh" className="bg-slate-900 text-white">Conexión: Solo Mesh Local</option>
+                  <option value="server" className="bg-slate-900 text-white">Conexión: Solo Servidores Públicos</option>
+                  <option value="private" className="bg-slate-900 text-white">Conexión: Privada (Local)</option>
                 </select>
               </div>
+              <button onClick={handleLogout} className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl text-sm transition-colors flex items-center gap-2 border border-red-500/20">
+                <Icon name="LogOut" size={16} /> Salir
+              </button>
             </div>
           </>
         ) : (
           <>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                <Icon name="Users" size={20} className="text-slate-400" />
+            <div className="flex items-center gap-4 relative z-10">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-cyan-500/20 to-purple-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
+                <Icon name="Users" size={20} />
               </div>
               <div>
-                <h3 className="font-bold text-white">Modo Invitado</h3>
-                <p className="text-xs text-slate-400">Visualizando comunidad pública</p>
+                <h3 className="font-bold text-white">Modo Invitado / P2P</h3>
+                <p className="text-xs text-slate-400">Acceso a red pública y sintonizaciones en línea</p>
               </div>
             </div>
-            <button onClick={() => setError('force_login')} className="px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v20M2 12h20M4.929 4.929l14.142 14.142M4.929 19.071L19.071 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
-              </svg>
-              Login Starseed
-            </button>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative z-10">
+              <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-white/10">
+                <Icon name="Wifi" size={14} className="text-cyan-400" />
+                <select 
+                  value={networkPreference} 
+                  onChange={(e) => handleNetworkPrefChange(e.target.value as any)}
+                  className="bg-transparent text-xs font-bold text-slate-200 focus:outline-none cursor-pointer"
+                >
+                  <option value="mixed" className="bg-slate-900 text-white">Conexión: Mixta (Internet + Mesh)</option>
+                  <option value="mesh" className="bg-slate-900 text-white">Conexión: Solo Mesh Local</option>
+                  <option value="server" className="bg-slate-900 text-white">Conexión: Solo Servidores Públicos</option>
+                  <option value="private" className="bg-slate-900 text-white">Conexión: Privada (Local)</option>
+                </select>
+              </div>
+              <button onClick={() => setError('force_login')} className="px-5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                <Icon name="LogIn" size={16} />
+                Ingresar / Registrarse
+              </button>
+            </div>
           </>
         )}
       </div>
