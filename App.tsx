@@ -526,34 +526,28 @@ const App: React.FC = () => {
 
       {/* --- Live Sync Call Overlay --- */}
       {activeSession && (
-         <div className="fixed bottom-4 right-4 z-50 w-[calc(100vw-2rem)] sm:w-96 md:w-[400px] max-h-[80vh] flex flex-col pointer-events-none">
-            <div className="pointer-events-auto shadow-2xl rounded-2xl overflow-hidden border border-white/10 bg-black/80 backdrop-blur-md">
-               <ErrorBoundary>
-                 <LiveSyncCall 
-                    session={activeSession} 
-                    currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
-                    onLeave={() => {
-                        setActiveSession(null);
-                        setSessionPermissions({
-                          canEditFrequencies: true,
-                          canUseMic: true,
-                          canUseVideo: true,
-                          canChat: true,
-                        });
-                    }} 
-                    currentOscillators={audio.oscillators}
-                    activeVizTab={activeVizTab}
-                    onSyncReceive={(oscillators, latency, vizTab) => {
-                        audio.syncFromRemote(oscillators);
-                        // NOTA: Ignoramos vizTab para desacoplar el visualizador. 
-                        // Cada usuario puede elegir su vista local.
-                    }}
-                    onPermissionsChange={(perms) => setSessionPermissions(perms)}
-                    onEndSession={() => setActiveSession(null)}
-                 />
-               </ErrorBoundary>
-            </div>
-         </div>
+         <ErrorBoundary>
+           <LiveSyncCall 
+              session={activeSession} 
+              currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
+              onLeave={() => {
+                  setActiveSession(null);
+                  setSessionPermissions({
+                    canEditFrequencies: true,
+                    canUseMic: true,
+                    canUseVideo: true,
+                    canChat: true,
+                  });
+              }} 
+              currentOscillators={audio.oscillators}
+              activeVizTab={activeVizTab}
+              onSyncReceive={(oscillators, latency, vizTab) => {
+                  audio.syncFromRemote(oscillators);
+              }}
+              onPermissionsChange={(perms) => setSessionPermissions(perms)}
+              onEndSession={() => setActiveSession(null)}
+           />
+         </ErrorBoundary>
       )}
 
       {/* --- Modals --- */}
