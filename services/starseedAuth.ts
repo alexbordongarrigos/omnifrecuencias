@@ -22,9 +22,23 @@ export const loginWithStarseed = async (email: string, password: string): Promis
     password,
   });
 
-  if (error || !data.user) {
+  if (error) {
+    // If account doesn't exist yet on this Supabase project instance, auto-provision
+    if (error.message.includes('Invalid login credentials') || error.status === 400 || error.message.includes('Invalid')) {
+      try {
+        const newUser = await signUpWithStarseed(email, password, email.split('@')[0]);
+        if (newUser) return newUser;
+      } catch (signUpErr: any) {
+        console.error("Starseed OS Auto-Provision Error:", signUpErr);
+        throw new Error(error?.message || "Error al iniciar sesión");
+      }
+    }
     console.error("Starseed OS Login Error:", error?.message);
-    throw new Error(error?.message || "Login failed");
+    throw new Error(error?.message || "Error al iniciar sesión");
+  }
+
+  if (!data.user) {
+    throw new Error("No se pudo obtener la sesión de usuario");
   }
 
   const { data: profile } = await supabase
@@ -36,7 +50,7 @@ export const loginWithStarseed = async (email: string, password: string): Promis
   return {
     id: data.user.id,
     email: data.user.email || '',
-    displayName: profile?.display_name || data.user.user_metadata?.full_name || 'Starseed Explorer',
+    displayName: profile?.display_name || data.user.user_metadata?.full_name || email.split('@')[0] || 'Starseed Explorer',
     avatar_url: profile?.avatar_url,
     cover_url: profile?.cover_url,
   };

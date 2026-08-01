@@ -11,6 +11,7 @@ import {
 import { fetchCommunityProfiles, checkResonance, resonateWithUser, unresonateWithUser } from '../services/omniCommunity';
 import { FileSystemNode, LiveSession, CATEGORIES, OmniProfile, OscillatorState } from '../types';
 import PublishParticleModal from './PublishParticleModal';
+import MeshSignalMap from './MeshSignalMap';
 
 interface Props {
   onLoadPreset: (node: FileSystemNode) => void;
@@ -30,7 +31,7 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles'>('vibras');
+  const [activeTab, setActiveTab] = useState<'vibras' | 'entonacion' | 'perfiles' | 'radar'>('vibras');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState<'recent' | 'popular' | 'category'>('recent');
   
@@ -345,6 +346,12 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
             onClick={() => setActiveTab('perfiles')}
           >
             <Icon name="Users" size={18} /> Perfiles
+          </button>
+          <button
+            className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 ${activeTab === 'radar' ? 'bg-cyan-500 text-black shadow-[0_0_15px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-white'}`}
+            onClick={() => setActiveTab('radar')}
+          >
+            <Icon name="Activity" size={18} className="animate-pulse" /> Radar Mesh
           </button>
         </div>
 
@@ -678,6 +685,12 @@ const OnlineLibrary: React.FC<Props> = ({ onLoadPreset, onJoinSession, currentOs
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {activeTab === 'radar' && (
+        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+          <MeshSignalMap />
         </div>
       )}
 
