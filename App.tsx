@@ -530,6 +530,7 @@ const App: React.FC = () => {
            <LiveSyncCall 
               session={activeSession} 
               currentUser={currentUser || { id: 'anonymous', displayName: 'Explorador', email: '' } as any} 
+              audio={audio}
               onLeave={() => {
                   setActiveSession(null);
                   setSessionPermissions({

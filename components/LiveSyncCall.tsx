@@ -3,16 +3,18 @@ import { useWebRTC, RemoteStream } from '../hooks/useWebRTC';
 import { useMeshSync } from '../hooks/useMeshSync';
 import Icon from './Icon';
 import { StarseedUser } from '../services/starseedAuth';
-import { LiveSession } from '../types';
+import { LiveSession, OscillatorState } from '../types';
 import MeshSignalMap from './MeshSignalMap';
 import VirtualVRRoom from './VirtualVRRoom';
 import Visualizer from './Visualizer';
 import { CymaticsVisualizer3D } from './CymaticsVisualizer3D';
 import { SpiralVisualizer } from './SpiralVisualizer';
+import OscillatorControls from './OscillatorControls';
 
 interface Props {
   session: LiveSession;
   currentUser: StarseedUser;
+  audio?: any;
   onLeave: () => void;
   currentOscillators: any[];
   activeVizTab?: '2d' | '3d' | 'spiral';
@@ -50,6 +52,7 @@ const VideoPlayer: React.FC<{ stream: MediaStream; isLocal?: boolean; displayNam
 const LiveSyncCall: React.FC<Props> = ({
   session,
   currentUser,
+  audio,
   onLeave,
   currentOscillators,
   activeVizTab,
@@ -61,7 +64,7 @@ const LiveSyncCall: React.FC<Props> = ({
   
   // View Modes: 'studio' (Ventana Completa) vs 'compact' (Widget Flotante)
   const [viewMode, setViewMode] = useState<'studio' | 'compact'>('studio');
-  const [studioTab, setStudioTab] = useState<'visualizers' | 'video' | 'private_groups' | 'radar' | 'host' | 'filter'>('visualizers');
+  const [studioTab, setStudioTab] = useState<'visualizers' | 'generator' | 'video' | 'private_groups' | 'radar' | 'host' | 'filter'>('visualizers');
 
   // VR Room Overlay State
   const [showVRRoom, setShowVRRoom] = useState(false);
@@ -71,7 +74,6 @@ const LiveSyncCall: React.FC<Props> = ({
   const [handRaised, setHandRaised] = useState(false);
   const [personalOffset, setPersonalOffset] = useState<number>(0);
   const [userTransmissionScope, setUserTransmissionScope] = useState<'public' | 'select' | 'listen_only'>('public');
-  const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [expandedViz, setExpandedViz] = useState<'2d' | '3d' | 'spiral' | null>(null);
 
   // Private Sub-Call states
@@ -80,7 +82,7 @@ const LiveSyncCall: React.FC<Props> = ({
 
   // Host Permissions State
   const [localPermissions, setLocalPermissions] = useState({
-    canEditFrequencies: false,
+    canEditFrequencies: true,
     canUseMic: true,
     canUseVideo: true,
     canChat: true,
@@ -131,7 +133,6 @@ const LiveSyncCall: React.FC<Props> = ({
   };
 
   const {
-    nodes: meshNodes,
     connectionState: meshState,
     latencyDelta,
     broadcastData: broadcastMeshOscillators
@@ -180,6 +181,37 @@ const LiveSyncCall: React.FC<Props> = ({
   };
 
   const activeFrequenciesList = currentOscillators.map(o => o.frequency);
+  const analyserNode = audio?.analyser || null;
+
+  // Generator Helper Actions inside Live Studio
+  const handleAddOscillator = () => {
+    if (audio?.addOscillator) {
+      audio.addOscillator();
+    }
+  };
+
+  const handleUpdateOscillator = (id: string, updates: Partial<OscillatorState>) => {
+    if (audio?.updateOscillator) {
+      audio.updateOscillator(id, updates);
+    }
+  };
+
+  const handleRemoveOscillator = (id: string) => {
+    if (audio?.removeOscillator) {
+      audio.removeOscillator(id);
+    }
+  };
+
+  const handleSolfeggioAdd = (freq: number, label: string) => {
+    if (audio?.addOscillator) {
+      audio.addOscillator({
+        frequency: freq,
+        waveform: 'sine',
+        gain: 0.5,
+        pan: 0
+      });
+    }
+  };
 
   // -------------------------------------------------------------
   // FULL STUDIO VIEW (ESTUDIO HOLOFÓNICO COMPLETO - VENTANA COMPLETA)
@@ -198,6 +230,7 @@ const LiveSyncCall: React.FC<Props> = ({
                 color: p.id === currentUser.id ? '#22d3ee' : '#a855f7'
               }))}
               currentUserId={currentUser.id}
+              analyser={analyserNode}
               frequencies={activeFrequenciesList}
               onClose={() => setShowVRRoom(false)}
             />
@@ -215,7 +248,7 @@ const LiveSyncCall: React.FC<Props> = ({
                   </span>
                 </div>
                 <p className="text-xs text-amber-400 font-bold">
-                  Host: {session.hostName} {isHost && '(Tú)'} | {participants.length} Entonadores
+                  Host: {session.hostName} {isHost && '(Tú)'} | {participants.length} Entonadores Conectados
                 </p>
               </div>
             </div>
@@ -258,7 +291,16 @@ const LiveSyncCall: React.FC<Props> = ({
                 studioTab === 'visualizers' ? 'bg-cyan-500 text-black shadow-[0_0_20px_rgba(34,211,238,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Activity" size={16} /> 3 Gráficas de Frecuencia
+              <Icon name="Activity" size={16} /> 3 Gráficas Simultáneas
+            </button>
+
+            <button
+              onClick={() => setStudioTab('generator')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                studioTab === 'generator' ? 'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
+              }`}
+            >
+              <Icon name="Sliders" size={16} /> Matriz del Generador ({currentOscillators.length})
             </button>
 
             <button
@@ -267,7 +309,7 @@ const LiveSyncCall: React.FC<Props> = ({
                 studioTab === 'video' ? 'bg-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Video" size={16} /> Llamada Abierta Audio y Video
+              <Icon name="Video" size={16} /> Llamada Abierta Audio/Video
             </button>
 
             <button
@@ -285,17 +327,17 @@ const LiveSyncCall: React.FC<Props> = ({
                 studioTab === 'radar' ? 'bg-green-500 text-black shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Radio" size={16} className="animate-pulse" /> Radar Mesh y Antenas
+              <Icon name="Radio" size={16} className="animate-pulse" /> Radar Mesh
             </button>
 
             {isHost && (
               <button
                 onClick={() => setStudioTab('host')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                  studioTab === 'host' ? 'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
+                  studioTab === 'host' ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
                 }`}
               >
-                <Icon name="Shield" size={16} /> Panel del Anfitrión
+                <Icon name="Shield" size={16} /> Panel Anfitrión
               </button>
             )}
 
@@ -305,14 +347,14 @@ const LiveSyncCall: React.FC<Props> = ({
                 studioTab === 'filter' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Sliders" size={16} /> Privacidad y Filtros
+              <Icon name="Lock" size={16} /> Privacidad y Filtros
             </button>
           </div>
 
           {/* Studio Main Content Area */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar flex flex-col gap-6 relative">
             
-            {/* TAB 1: 3 VISUALIZERS SIMULTANEOUS GRID */}
+            {/* TAB 1: 3 VISUALIZERS SIMULTANEOUS GRID CONNECTED TO ANALYSER */}
             {studioTab === 'visualizers' && (
               <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
@@ -320,55 +362,58 @@ const LiveSyncCall: React.FC<Props> = ({
                     <Icon name="Activity" size={18} /> Visualización Simultánea Multidimensional
                   </h3>
                   <span className="text-xs text-slate-400 font-mono">
-                    Frecuencia Activa: {activeFrequenciesList.join(', ')} Hz
+                    Frecuencias Activas: {activeFrequenciesList.join(', ')} Hz
                   </span>
                 </div>
 
                 <div className={`grid gap-4 ${expandedViz ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
+                  {/* 1. ONDAS 2D */}
                   {(!expandedViz || expandedViz === '2d') && (
                     <div className="bg-black/60 border border-cyan-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
-                          <Icon name="Activity" size={14} /> Ondas 2D
+                          <Icon name="Activity" size={14} /> Ondas 2D Resonantes
                         </span>
                         <button onClick={() => setExpandedViz(expandedViz === '2d' ? null : '2d')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === '2d' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
                       <div className="h-64 bg-black/80 rounded-2xl overflow-hidden border border-white/5 relative">
-                        <Visualizer analyser={null} height={256} color="#22d3ee" type="fill" />
+                        <Visualizer analyser={analyserNode} height={256} color="#22d3ee" type="fill" />
                       </div>
                     </div>
                   )}
 
+                  {/* 2. CIMÁTICA 3D */}
                   {(!expandedViz || expandedViz === '3d') && (
                     <div className="bg-black/60 border border-purple-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-purple-400 flex items-center gap-2">
-                          <Icon name="Hexagon" size={14} /> Cimática 3D
+                          <Icon name="Hexagon" size={14} /> Cimática 3D (Patrones Chladni)
                         </span>
                         <button onClick={() => setExpandedViz(expandedViz === '3d' ? null : '3d')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === '3d' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
                       <div className="h-64 bg-black/80 rounded-2xl overflow-hidden border border-white/5 relative">
-                        <CymaticsVisualizer3D analyser={null} activeFrequencies={activeFrequenciesList} height={256} />
+                        <CymaticsVisualizer3D analyser={analyserNode} activeFrequencies={activeFrequenciesList} height={256} />
                       </div>
                     </div>
                   )}
 
+                  {/* 3. ESPIRAL CUÁNTICA */}
                   {(!expandedViz || expandedViz === 'spiral') && (
                     <div className="bg-black/60 border border-pink-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-pink-400 flex items-center gap-2">
-                          <Icon name="Aperture" size={14} /> Espiral Cuántica
+                          <Icon name="Aperture" size={14} /> Espiral Cuántica Armónica
                         </span>
                         <button onClick={() => setExpandedViz(expandedViz === 'spiral' ? null : 'spiral')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === 'spiral' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
                       <div className="h-64 bg-black/80 rounded-2xl overflow-hidden border border-white/5 relative">
-                        <SpiralVisualizer analyser={null} activeFrequencies={activeFrequenciesList} height={256} />
+                        <SpiralVisualizer analyser={analyserNode} activeFrequencies={activeFrequenciesList} height={256} />
                       </div>
                     </div>
                   )}
@@ -376,7 +421,81 @@ const LiveSyncCall: React.FC<Props> = ({
               </div>
             )}
 
-            {/* TAB 2: OPEN VIDEO & AUDIO GALLERY */}
+            {/* TAB 2: EMBEDDED GENERATOR MATRIX (EDICIÓN DE FRECUENCIAS DE LA ENTÓNACIÓN) */}
+            {studioTab === 'generator' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between bg-black/60 p-4 rounded-2xl border border-amber-500/30">
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                      <Icon name="Sliders" size={18} /> Matriz de Frecuencias y Generador en Vivo
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {isHost || activePermissions.canEditFrequencies 
+                        ? 'Edita y mezcla frecuencias armónicas en tiempo real para todos los entonadores conectados.'
+                        : 'Visualizando configuración activa. Los permisos de edición están restringidos por el anfitrión.'}
+                    </p>
+                  </div>
+
+                  {(isHost || activePermissions.canEditFrequencies) && (
+                    <button
+                      onClick={handleAddOscillator}
+                      className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold rounded-2xl text-xs transition-all shadow-[0_0_20px_rgba(245,158,11,0.5)] flex items-center gap-2"
+                    >
+                      <Icon name="Plus" size={16} />
+                      <span>+ Agregar Frecuencia</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Solfeggio Frequencies Injector */}
+                {(isHost || activePermissions.canEditFrequencies) && (
+                  <div className="bg-black/40 p-4 rounded-2xl border border-white/10 flex flex-col gap-3">
+                    <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                      Inyectar Frecuencia Armónica Solfeggio / Sagrada:
+                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { f: 432, l: '432 Hz Sol' },
+                        { f: 528, l: '528 Hz ADN' },
+                        { f: 639, l: '639 Hz Conexión' },
+                        { f: 741, l: '741 Hz Limpieza' },
+                        { f: 852, l: '852 Hz Intuición' },
+                        { f: 963, l: '963 Hz Corona' }
+                      ].map((item) => (
+                        <button
+                          key={item.f}
+                          onClick={() => handleSolfeggioAdd(item.f, item.l)}
+                          className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all"
+                        >
+                          + {item.l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Oscillators Matrix List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {currentOscillators.map((osc: OscillatorState) => (
+                    <OscillatorControls
+                      key={osc.id}
+                      osc={osc}
+                      update={handleUpdateOscillator}
+                      remove={handleRemoveOscillator}
+                      analyser={analyserNode}
+                    />
+                  ))}
+                  {currentOscillators.length === 0 && (
+                    <div className="col-span-full py-12 text-center text-slate-500 bg-black/40 rounded-3xl border border-white/5">
+                      <Icon name="Activity" size={40} className="mx-auto mb-2 opacity-30 text-amber-400" />
+                      <p className="text-xs">No hay osciladores en la sesión actual. Presiona "+ Agregar Frecuencia".</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: OPEN VIDEO & AUDIO GALLERY */}
             {studioTab === 'video' && (
               <div className="flex flex-col gap-6 h-full">
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-black/60 p-4 rounded-2xl border border-white/10">
@@ -423,7 +542,7 @@ const LiveSyncCall: React.FC<Props> = ({
               </div>
             )}
 
-            {/* TAB 3: PRIVATE CALLS AND SUB-GROUPS */}
+            {/* TAB 4: PRIVATE CALLS AND SUB-GROUPS */}
             {studioTab === 'private_groups' && (
               <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
                 <div className="bg-black/60 p-6 rounded-3xl border border-fuchsia-500/40 flex flex-col gap-6 shadow-xl">
@@ -436,7 +555,6 @@ const LiveSyncCall: React.FC<Props> = ({
                     </p>
                   </div>
 
-                  {/* Participant Selection for Private Sub-Group */}
                   <div>
                     <h4 className="text-xs uppercase font-bold text-slate-300 tracking-wider mb-3">
                       Crear / Editar Sub-Grupo de Entonación Privado
@@ -462,7 +580,6 @@ const LiveSyncCall: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  {/* Direct 1-on-1 Call Action Buttons */}
                   <div>
                     <h4 className="text-xs uppercase font-bold text-slate-300 tracking-wider mb-3">
                       Llamadas Directas 1-a-1
@@ -498,14 +615,14 @@ const LiveSyncCall: React.FC<Props> = ({
               </div>
             )}
 
-            {/* TAB 4: RADAR MESH */}
+            {/* TAB 5: RADAR MESH */}
             {studioTab === 'radar' && (
               <div className="flex-1">
                 <MeshSignalMap />
               </div>
             )}
 
-            {/* TAB 5: HOST ADMIN PANEL */}
+            {/* TAB 6: HOST ADMIN PANEL */}
             {studioTab === 'host' && isHost && (
               <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
                 <div className="bg-black/60 p-6 rounded-3xl border border-purple-500/40 flex flex-col gap-4 shadow-xl">
@@ -546,7 +663,7 @@ const LiveSyncCall: React.FC<Props> = ({
               </div>
             )}
 
-            {/* TAB 6: PRIVACY AND FILTERS */}
+            {/* TAB 7: PRIVACY AND FILTERS */}
             {studioTab === 'filter' && (
               <div className="flex flex-col gap-6 max-w-2xl mx-auto w-full">
                 <div className="bg-black/60 p-6 rounded-3xl border border-cyan-500/40 flex flex-col gap-4 shadow-xl">
