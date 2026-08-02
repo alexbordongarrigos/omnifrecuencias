@@ -68,6 +68,7 @@ const PublishParticleModal: React.FC<Props> = ({ onClose, oscillators, user }) =
 
     try {
       const payload = {
+        id: crypto.randomUUID(),
         name: title.trim(),
         content: {
           oscillators: dataToPublish,

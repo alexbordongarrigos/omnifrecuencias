@@ -59,9 +59,9 @@ const LiveSyncCall: React.FC<Props> = ({
   const isHost = session.hostId === currentUser.id || (session.hostId === 'local-host' && currentUser.id === 'anonymous');
   const lastSentState = useRef<string>('');
   
-  // View Modes: 'studio' vs 'compact'
+  // View Modes: 'studio' (Ventana Completa) vs 'compact' (Widget Flotante)
   const [viewMode, setViewMode] = useState<'studio' | 'compact'>('studio');
-  const [studioTab, setStudioTab] = useState<'visualizers' | 'video' | 'radar' | 'host' | 'filter'>('visualizers');
+  const [studioTab, setStudioTab] = useState<'visualizers' | 'video' | 'private_groups' | 'radar' | 'host' | 'filter'>('visualizers');
 
   // VR Room Overlay State
   const [showVRRoom, setShowVRRoom] = useState(false);
@@ -73,6 +73,10 @@ const LiveSyncCall: React.FC<Props> = ({
   const [userTransmissionScope, setUserTransmissionScope] = useState<'public' | 'select' | 'listen_only'>('public');
   const [targetUserIds, setTargetUserIds] = useState<string[]>([]);
   const [expandedViz, setExpandedViz] = useState<'2d' | '3d' | 'spiral' | null>(null);
+
+  // Private Sub-Call states
+  const [activePrivatePeer, setActivePrivatePeer] = useState<string | null>(null);
+  const [privateGroupUserIds, setPrivateGroupUserIds] = useState<string[]>([]);
 
   // Host Permissions State
   const [localPermissions, setLocalPermissions] = useState({
@@ -130,7 +134,6 @@ const LiveSyncCall: React.FC<Props> = ({
     nodes: meshNodes,
     connectionState: meshState,
     latencyDelta,
-    connectToMesh,
     broadcastData: broadcastMeshOscillators
   } = useMeshSync((payload) => {
     if (payload.type === 'oscillator_sync' && payload.sender !== currentUser.id) {
@@ -170,17 +173,23 @@ const LiveSyncCall: React.FC<Props> = ({
     }
   };
 
+  const togglePrivateGroupUser = (userId: string) => {
+    setPrivateGroupUserIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
+
   const activeFrequenciesList = currentOscillators.map(o => o.frequency);
 
   // -------------------------------------------------------------
-  // FULL STUDIO VIEW (ESTUDIO HOLOFÓNICO COMPLETO)
+  // FULL STUDIO VIEW (ESTUDIO HOLOFÓNICO COMPLETO - VENTANA COMPLETA)
   // -------------------------------------------------------------
   if (viewMode === 'studio') {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-5 bg-black/80 backdrop-blur-2xl animate-fade-in">
         <div className="bg-[#070a14] border border-cyan-500/40 rounded-3xl w-full max-w-7xl h-[94vh] flex flex-col shadow-[0_0_90px_rgba(34,211,238,0.25)] overflow-hidden relative">
           
-          {/* Virtual VR Room Modal Launcher */}
+          {/* Virtual VR Room Launcher Modal */}
           {showVRRoom && (
             <VirtualVRRoom
               participants={participants.map((p) => ({
@@ -221,12 +230,14 @@ const LiveSyncCall: React.FC<Props> = ({
                 <span>Sala Virtual VR/3D</span>
               </button>
 
+              {/* MINIMIZE TO FLOATING WIDGET BUTTON */}
               <button
                 onClick={() => setViewMode('compact')}
-                className="p-2 bg-white/10 hover:bg-white/20 text-cyan-300 rounded-xl text-xs font-bold transition-all border border-white/10"
-                title="Minimizar a widget flotante"
+                className="px-3.5 py-2 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black rounded-xl text-xs font-bold transition-all border border-cyan-500/40 flex items-center gap-1.5 shadow-[0_0_12px_rgba(34,211,238,0.3)]"
+                title="Cambiar a Widget Flotante"
               >
                 <Icon name="Minimize2" size={16} />
+                <span>Widget Flotante</span>
               </button>
 
               <button
@@ -256,7 +267,16 @@ const LiveSyncCall: React.FC<Props> = ({
                 studioTab === 'video' ? 'bg-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Video" size={16} /> Llamada Audio y Video
+              <Icon name="Video" size={16} /> Llamada Abierta Audio y Video
+            </button>
+
+            <button
+              onClick={() => setStudioTab('private_groups')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                studioTab === 'private_groups' ? 'bg-fuchsia-500 text-white shadow-[0_0_20px_rgba(217,70,239,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
+              }`}
+            >
+              <Icon name="Users" size={16} /> Llamadas Privadas y Sub-Grupos
             </button>
 
             <button
@@ -282,14 +302,14 @@ const LiveSyncCall: React.FC<Props> = ({
             <button
               onClick={() => setStudioTab('filter')}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                studioTab === 'filter' ? 'bg-fuchsia-500 text-white shadow-[0_0_20px_rgba(217,70,239,0.4)]' : 'text-slate-400 hover:text-white bg-white/5'
+                studioTab === 'filter' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white bg-white/5'
               }`}
             >
-              <Icon name="Sliders" size={16} /> Mi Privacidad y Filtros
+              <Icon name="Sliders" size={16} /> Privacidad y Filtros
             </button>
           </div>
 
-          {/* Studio Main Content View Area */}
+          {/* Studio Main Content Area */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar flex flex-col gap-6 relative">
             
             {/* TAB 1: 3 VISUALIZERS SIMULTANEOUS GRID */}
@@ -304,20 +324,14 @@ const LiveSyncCall: React.FC<Props> = ({
                   </span>
                 </div>
 
-                {/* 3 Visualizers Interactive Grid */}
                 <div className={`grid gap-4 ${expandedViz ? 'grid-cols-1' : 'grid-cols-1 lg:grid-cols-3'}`}>
-                  
-                  {/* 1. ONDAS 2D VISUALIZER */}
                   {(!expandedViz || expandedViz === '2d') && (
                     <div className="bg-black/60 border border-cyan-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-cyan-400 flex items-center gap-2">
                           <Icon name="Activity" size={14} /> Ondas 2D
                         </span>
-                        <button
-                          onClick={() => setExpandedViz(expandedViz === '2d' ? null : '2d')}
-                          className="p-1 text-slate-400 hover:text-white"
-                        >
+                        <button onClick={() => setExpandedViz(expandedViz === '2d' ? null : '2d')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === '2d' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
@@ -327,17 +341,13 @@ const LiveSyncCall: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {/* 2. CIMÁTICA 3D VISUALIZER */}
                   {(!expandedViz || expandedViz === '3d') && (
                     <div className="bg-black/60 border border-purple-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-purple-400 flex items-center gap-2">
                           <Icon name="Hexagon" size={14} /> Cimática 3D
                         </span>
-                        <button
-                          onClick={() => setExpandedViz(expandedViz === '3d' ? null : '3d')}
-                          className="p-1 text-slate-400 hover:text-white"
-                        >
+                        <button onClick={() => setExpandedViz(expandedViz === '3d' ? null : '3d')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === '3d' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
@@ -347,17 +357,13 @@ const LiveSyncCall: React.FC<Props> = ({
                     </div>
                   )}
 
-                  {/* 3. ESPIRAL CUÁNTICA VISUALIZER */}
                   {(!expandedViz || expandedViz === 'spiral') && (
                     <div className="bg-black/60 border border-pink-500/30 rounded-3xl p-4 flex flex-col gap-3 relative overflow-hidden shadow-xl">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-pink-400 flex items-center gap-2">
                           <Icon name="Aperture" size={14} /> Espiral Cuántica
                         </span>
-                        <button
-                          onClick={() => setExpandedViz(expandedViz === 'spiral' ? null : 'spiral')}
-                          className="p-1 text-slate-400 hover:text-white"
-                        >
+                        <button onClick={() => setExpandedViz(expandedViz === 'spiral' ? null : 'spiral')} className="p-1 text-slate-400 hover:text-white">
                           <Icon name={expandedViz === 'spiral' ? "Minimize2" : "Maximize2"} size={14} />
                         </button>
                       </div>
@@ -366,12 +372,11 @@ const LiveSyncCall: React.FC<Props> = ({
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
             )}
 
-            {/* TAB 2: VIDEO AND AUDIO CALL GALLERY */}
+            {/* TAB 2: OPEN VIDEO & AUDIO GALLERY */}
             {studioTab === 'video' && (
               <div className="flex flex-col gap-6 h-full">
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-black/60 p-4 rounded-2xl border border-white/10">
@@ -399,7 +404,6 @@ const LiveSyncCall: React.FC<Props> = ({
                   )}
                 </div>
 
-                {/* Video Streams Gallery */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
                   {localStream && isVideoEnabled && (
                     <VideoPlayer stream={localStream} isLocal displayName={currentUser.displayName} />
@@ -412,21 +416,96 @@ const LiveSyncCall: React.FC<Props> = ({
                     <div className="col-span-full py-16 flex flex-col items-center justify-center text-slate-500 bg-black/40 rounded-3xl border border-white/5">
                       <Icon name="VideoOff" size={48} className="mb-3 opacity-30 text-cyan-400" />
                       <h4 className="text-base font-bold text-slate-300">Cámara Desactivada</h4>
-                      <p className="text-xs text-slate-500 mt-1">Usa los botones inferiores para activar tu audio y video.</p>
+                      <p className="text-xs text-slate-500 mt-1">Usa los botones de control para transmitir audio y video.</p>
                     </div>
                   )}
                 </div>
               </div>
             )}
 
-            {/* TAB 3: RADAR MESH */}
+            {/* TAB 3: PRIVATE CALLS AND SUB-GROUPS */}
+            {studioTab === 'private_groups' && (
+              <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full">
+                <div className="bg-black/60 p-6 rounded-3xl border border-fuchsia-500/40 flex flex-col gap-6 shadow-xl">
+                  <div className="border-b border-fuchsia-500/30 pb-3">
+                    <h3 className="text-base font-bold text-fuchsia-300 uppercase tracking-wider flex items-center gap-2">
+                      <Icon name="Users" size={18} /> Llamadas Privadas Directas y Sub-Grupos P2P
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Inicia llamadas de audio/video 1-a-1 o selecciona grupos específicos para entonaciones privadas.
+                    </p>
+                  </div>
+
+                  {/* Participant Selection for Private Sub-Group */}
+                  <div>
+                    <h4 className="text-xs uppercase font-bold text-slate-300 tracking-wider mb-3">
+                      Crear / Editar Sub-Grupo de Entonación Privado
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {participants.map((p) => (
+                        <div
+                          key={p.id}
+                          onClick={() => togglePrivateGroupUser(p.id)}
+                          className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                            privateGroupUserIds.includes(p.id)
+                              ? 'bg-fuchsia-500/20 border-fuchsia-500 text-white shadow-[0_0_15px_rgba(217,70,239,0.3)]'
+                              : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
+                            <span className="text-xs font-bold truncate">{p.displayName} {p.id === currentUser.id && '(Tú)'}</span>
+                          </div>
+                          <Icon name={privateGroupUserIds.includes(p.id) ? "CheckCircle" : "Circle"} size={16} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Direct 1-on-1 Call Action Buttons */}
+                  <div>
+                    <h4 className="text-xs uppercase font-bold text-slate-300 tracking-wider mb-3">
+                      Llamadas Directas 1-a-1
+                    </h4>
+                    <div className="space-y-3">
+                      {participants.filter(p => p.id !== currentUser.id).map((p) => (
+                        <div key={p.id} className="flex items-center justify-between p-3.5 bg-white/5 border border-white/10 rounded-2xl">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-white">{p.displayName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setActivePrivatePeer(p.id)}
+                              className="px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-cyan-500/40"
+                            >
+                              <Icon name="Phone" size={14} /> Audio 1-a-1
+                            </button>
+                            <button
+                              onClick={() => setActivePrivatePeer(p.id)}
+                              className="px-3 py-1.5 bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-purple-500/40"
+                            >
+                              <Icon name="Video" size={14} /> Video 1-a-1
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {participants.filter(p => p.id !== currentUser.id).length === 0 && (
+                        <p className="text-xs text-slate-500 italic">No hay otros entonadores conectados por el momento.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: RADAR MESH */}
             {studioTab === 'radar' && (
               <div className="flex-1">
                 <MeshSignalMap />
               </div>
             )}
 
-            {/* TAB 4: HOST ADMIN PANEL */}
+            {/* TAB 5: HOST ADMIN PANEL */}
             {studioTab === 'host' && isHost && (
               <div className="flex flex-col gap-6 max-w-3xl mx-auto w-full">
                 <div className="bg-black/60 p-6 rounded-3xl border border-purple-500/40 flex flex-col gap-4 shadow-xl">
@@ -467,15 +546,14 @@ const LiveSyncCall: React.FC<Props> = ({
               </div>
             )}
 
-            {/* TAB 5: USER PERSONAL PRIVACY & TRANSMISSION SCOPE */}
+            {/* TAB 6: PRIVACY AND FILTERS */}
             {studioTab === 'filter' && (
               <div className="flex flex-col gap-6 max-w-2xl mx-auto w-full">
-                <div className="bg-black/60 p-6 rounded-3xl border border-fuchsia-500/40 flex flex-col gap-4 shadow-xl">
-                  <h3 className="text-base font-bold text-fuchsia-300 uppercase tracking-wider flex items-center gap-2 border-b border-fuchsia-500/30 pb-3">
+                <div className="bg-black/60 p-6 rounded-3xl border border-cyan-500/40 flex flex-col gap-4 shadow-xl">
+                  <h3 className="text-base font-bold text-cyan-300 uppercase tracking-wider flex items-center gap-2 border-b border-cyan-500/30 pb-3">
                     <Icon name="Lock" size={18} /> Ajustes de Privacidad y Ámbito Personal
                   </h3>
 
-                  {/* Personal Transmission Scope Option */}
                   <div>
                     <label className="block text-xs uppercase font-bold text-slate-400 tracking-wider mb-2">
                       Mi Ámbito de Transmisión Personal
@@ -544,7 +622,6 @@ const LiveSyncCall: React.FC<Props> = ({
           {/* Studio Bottom Master Controls Bar */}
           <div className="p-4 border-t border-white/10 bg-black/90 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-              {/* Dedicated Audio Call Button */}
               <button
                 onClick={toggleAudio}
                 disabled={!activePermissions.canUseMic && !isHost}
@@ -561,7 +638,6 @@ const LiveSyncCall: React.FC<Props> = ({
                 <span>{isAudioEnabled ? 'Micrófono Activo' : 'Llamada de Audio'}</span>
               </button>
 
-              {/* Dedicated Video Call Button */}
               <button
                 onClick={toggleVideo}
                 disabled={!activePermissions.canUseVideo && !isHost}
@@ -578,7 +654,6 @@ const LiveSyncCall: React.FC<Props> = ({
                 <span>{isVideoEnabled ? 'Cámara Activa' : 'Encender Cámara'}</span>
               </button>
 
-              {/* Chat Toggle Button */}
               <button
                 onClick={() => setShowChat(!showChat)}
                 className={`px-4 h-12 rounded-2xl flex items-center gap-2 text-xs font-bold transition-all border relative ${
@@ -654,13 +729,14 @@ const LiveSyncCall: React.FC<Props> = ({
           <span className="text-xs font-bold text-white truncate">{session.presetName}</span>
         </div>
         
+        {/* BUTTON TO SWITCH TO FULL STUDIO WINDOW */}
         <button
           onClick={() => setViewMode('studio')}
-          className="px-2.5 py-1 bg-cyan-500/20 hover:bg-cyan-500 text-cyan-300 hover:text-black rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border border-cyan-500/40 shadow-[0_0_12px_rgba(34,211,238,0.3)]"
-          title="Expandir a Estudio Completo"
+          className="px-3 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-black rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-[0_0_15px_rgba(34,211,238,0.5)] cursor-pointer"
+          title="Abrir Ventana Completa de Entonación"
         >
           <Icon name="Maximize2" size={14} />
-          <span>Estudio VR</span>
+          <span>Ventana Completa</span>
         </button>
       </div>
 
@@ -669,15 +745,16 @@ const LiveSyncCall: React.FC<Props> = ({
         <span className="text-cyan-400">Δ {Math.round(latencyDelta)}ms</span>
       </div>
 
+      {/* ALL COMPACT WIDGET CONTROLS */}
       <div className="flex items-center justify-between pt-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={toggleAudio}
             disabled={!activePermissions.canUseMic && !isHost}
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
               isAudioEnabled ? 'bg-cyan-500 text-black' : 'bg-red-500/20 text-red-400 border border-red-500/30'
             }`}
-            title="Llamada de Audio"
+            title={isAudioEnabled ? 'Silenciar Micrófono' : 'Activar Llamada de Audio'}
           >
             <Icon name={isAudioEnabled ? 'Mic' : 'MicOff'} size={16} />
           </button>
@@ -688,15 +765,35 @@ const LiveSyncCall: React.FC<Props> = ({
             className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
               isVideoEnabled ? 'bg-cyan-500 text-black' : 'bg-red-500/20 text-red-400 border border-red-500/30'
             }`}
-            title="Llamada de Video"
+            title={isVideoEnabled ? 'Apagar Cámara' : 'Encender Cámara'}
           >
             <Icon name={isVideoEnabled ? 'Video' : 'VideoOff'} size={16} />
           </button>
+
+          <button
+            onClick={() => { setViewMode('studio'); setShowChat(true); }}
+            className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center transition-all hover:bg-purple-500/40"
+            title="Abrir Chat"
+          >
+            <Icon name="MessageSquare" size={16} />
+          </button>
+
+          {!isHost && (
+            <button
+              onClick={() => setHandRaised(!handRaised)}
+              className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                handRaised ? 'bg-amber-500 text-black border border-amber-300' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+              }`}
+              title="Pedir Palabra"
+            >
+              <Icon name="Hand" size={16} />
+            </button>
+          )}
         </div>
 
         <button
           onClick={() => isHost ? setShowExitModal(true) : onLeave()}
-          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl text-xs font-bold transition-all"
+          className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500 text-red-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-red-500/30"
         >
           Desconectar
         </button>
