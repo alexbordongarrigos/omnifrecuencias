@@ -603,11 +603,54 @@ export const useAudio = () => {
     return () => cancelAnimationFrame(reqFrameRef.current);
   }, []);
 
+  const syncFromRemote = (remoteOscillators: OscillatorState[]) => {
+    initAudio();
+    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
+
+    if (!Array.isArray(remoteOscillators)) return;
+
+    const remoteIds = new Set(remoteOscillators.map(o => o.id));
+    nodesRef.current.forEach((nodes, id) => {
+      if (!remoteIds.has(id)) {
+        try {
+          nodes.osc1.stop();
+          nodes.osc2.stop();
+          nodes.osc1.disconnect();
+          nodes.osc2.disconnect();
+          nodes.gain1.disconnect();
+          nodes.gain2.disconnect();
+          nodes.mainGain.disconnect();
+        } catch (e) {}
+        nodesRef.current.delete(id);
+      }
+    });
+
+    remoteOscillators.forEach(remoteOsc => {
+      const existing = nodesRef.current.get(remoteOsc.id);
+      if (!existing) {
+        createOscillatorNodes(remoteOsc);
+      } else {
+        updateOscillatorNodes(remoteOsc);
+      }
+    });
+
+    setOscillators(remoteOscillators);
+  };
+
+  const loadPreset = (presetContent: { oscillators: OscillatorState[] }) => {
+    if (presetContent && Array.isArray(presetContent.oscillators)) {
+      syncFromRemote(presetContent.oscillators);
+    }
+  };
+
   return {
     isPlaying,
     oscillators,
     masterVolume,
     masterFilter,
+    analyser: masterAnalyserRef.current,
     updateMasterVolume,
     updateMasterFilter,
     toggleMasterPlay,
@@ -615,6 +658,8 @@ export const useAudio = () => {
     removeOscillator,
     updateOscillator,
     setAllOscillators,
+    syncFromRemote,
+    loadPreset,
     getMasterAnalyser,
     getCombinedAnalyser,
     getOscillatorAnalyser,
