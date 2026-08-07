@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Layers, Pyramid, Activity, Orbit, Music, Brain, Zap, Search, 
@@ -7,8 +6,10 @@ import {
   CornerUpLeft, CornerUpRight, MoreHorizontal, Edit2, X, Play,
   Network, Globe, ArrowRight, Settings, Pause, ChevronRight, Waves,
   Info, Eye, Users, Cloud, Github, Loader, User, Library, 
-  CloudDownload, FileAudio, Inbox, MicOff, Headphones, Aperture, Maximize, Maximize2,
-  RefreshCw, LogOut, Monitor, Apple, Smartphone
+  CloudDownload, FileAudio, Inbox, Mic, MicOff, Headphones, Aperture, Maximize, Maximize2, Minimize2,
+  RefreshCw, LogOut, Monitor, Apple, Smartphone, Video, VideoOff, MessageSquare, Hand, Sliders,
+  Lock, Compass, Hexagon, CheckCircle, Circle, EyeOff, UserCheck, RadioReceiver, Server, Send,
+  XCircle, Anchor, HelpCircle, Phone, Volume2, VolumeX, Grid
 } from 'lucide-react';
 
 export const icons = {
@@ -56,16 +57,40 @@ export const icons = {
   CloudDownload,
   FileAudio,
   Inbox,
+  Mic,
   MicOff,
   Headphones,
   Aperture,
   Maximize,
   Maximize2,
+  Minimize2,
   RefreshCw,
   LogOut,
   Monitor,
   Apple,
-  Smartphone
+  Smartphone,
+  Video,
+  VideoOff,
+  MessageSquare,
+  Hand,
+  Sliders,
+  Lock,
+  Compass,
+  Hexagon,
+  CheckCircle,
+  Circle,
+  EyeOff,
+  UserCheck,
+  RadioReceiver,
+  Server,
+  Send,
+  XCircle,
+  Anchor,
+  HelpCircle,
+  Phone,
+  Volume2,
+  VolumeX,
+  Grid
 };
 
 interface IconProps {
